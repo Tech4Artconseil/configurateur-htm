@@ -57,7 +57,7 @@ async function scanMaterialCodes() {
         }
         
         // Fallback: essayer des codes communs (à personnaliser selon vos besoins)
-        const commonPrefixes = ['W', 'M', 'F', 'L', 'P', 'C', 'G', 'T', 'S', 'V'];
+        const commonPrefixes = ['W', 'M', 'F', 'L', 'P', 'C', 'G', 'T', 'S', 'V','X'];
         const foundCodes = [];
         
         for (const prefix of commonPrefixes) {
