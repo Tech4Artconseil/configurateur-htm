@@ -140,20 +140,100 @@ scanMaterialCodes().then(() => {
     model = gltf.scene;
     scene.add(model);
 
-    // Trouver les matériaux pour chaque partie
-    let foundMaterials = 0;
+    // Analyser tous les matériaux présents dans le modèle
+    log('=== ANALYSE DES MATÉRIAUX DU MODÈLE ===');
+    const allMaterials = new Map();
+    let meshCount = 0;
+    
     model.traverse((child) => {
         if (child.isMesh) {
-            productParts.forEach(part => {
-                if (child.material.name === part.toLowerCase()) {
-                    materials[part] = child.material;
-                    foundMaterials++;
-                    log(`Matériau trouvé: ${part}`);
+            meshCount++;
+            log(`Mesh #${meshCount}: "${child.name}"`);
+            
+            // Vérifier les UVs
+            const geometry = child.geometry;
+            if (geometry) {
+                const hasUV = geometry.attributes.uv !== undefined;
+                const hasUV2 = geometry.attributes.uv2 !== undefined;
+                log(`  ├─ Géométrie: ${geometry.type}`);
+                log(`  ├─ Vertices: ${geometry.attributes.position ? geometry.attributes.position.count : 0}`);
+                log(`  ├─ UV (channel 0): ${hasUV ? '✓ Présent' : '✗ ABSENT'}`);
+                if (hasUV) {
+                    log(`  │  └─ ${geometry.attributes.uv.count} UVs`);
+                }
+                log(`  ├─ UV2 (channel 1): ${hasUV2 ? '✓ Présent' : '✗ Absent'}`);
+                if (hasUV2) {
+                    log(`  │  └─ ${geometry.attributes.uv2.count} UV2s`);
+                }
+                
+                if (!hasUV) {
+                    log(`  ⚠ ATTENTION: Pas d'UV sur ce mesh, les textures ne s'afficheront pas!`, 'error');
+                }
+            }
+            
+            // Gérer les matériaux multiples ou uniques
+            const materialsArray = Array.isArray(child.material) ? child.material : [child.material];
+            
+            materialsArray.forEach((mat, index) => {
+                const matInfo = {
+                    name: mat.name || 'Sans nom',
+                    type: mat.type,
+                    uuid: mat.uuid,
+                    meshName: child.name,
+                    slotIndex: index
+                };
+                
+                log(`  └─ Slot ${index}: "${mat.name}" (${mat.type})`);
+                
+                // Stocker les infos du matériau
+                if (!allMaterials.has(mat.uuid)) {
+                    allMaterials.set(mat.uuid, matInfo);
                 }
             });
         }
     });
-    log(`Total matériaux trouvés: ${foundMaterials}/${productParts.length}`);
+    
+    log(`=== TOTAL: ${meshCount} mesh(es), ${allMaterials.size} matériau(x) unique(s) ===`);
+    
+    // Afficher tous les noms de matériaux uniques
+    log('Liste des matériaux uniques:');
+    allMaterials.forEach((info, uuid) => {
+        log(`  • "${info.name}" (${info.type})`);
+    });
+
+    // Trouver les matériaux pour chaque partie configurée
+    log('=== CORRESPONDANCE AVEC PARTIES CONFIGURABLES ===');
+    let foundMaterials = 0;
+    model.traverse((child) => {
+        if (child.isMesh) {
+            const materialsArray = Array.isArray(child.material) ? child.material : [child.material];
+            
+            materialsArray.forEach((mat) => {
+                productParts.forEach(part => {
+                    if (mat.name.toLowerCase() === part.toLowerCase()) {
+                        materials[part] = mat;
+                        foundMaterials++;
+                        log(`✓ Matériau "${mat.name}" assigné à partie: ${part}`);
+                    }
+                });
+            });
+        }
+    });
+    
+    if (foundMaterials === 0) {
+        log('⚠ ATTENTION: Aucun matériau ne correspond aux parties configurées!', 'warning');
+        log('Vérifiez que les noms dans productParts correspondent aux noms dans le GLB', 'warning');
+    } else {
+        log(`✓ Total matériaux assignés: ${foundMaterials}/${productParts.length}`);
+    }
+    
+    // Afficher les parties non trouvées
+    productParts.forEach(part => {
+        if (!materials[part]) {
+            log(`✗ Partie "${part}" non trouvée dans le modèle`, 'warning');
+        }
+    });
+    log('=== FIN ANALYSE ===');
 
     // Charger les textures initiales pour chaque partie
     productParts.forEach(part => {
@@ -169,6 +249,9 @@ scanMaterialCodes().then(() => {
     camera.lookAt(center);
     log('Caméra centrée sur le modèle');
     log('Chargement terminé avec succès');
+    
+    // Générer les boutons de couleur dynamiquement (après le chargement)
+    generateColorButtons();
 }, undefined, (error) => {
     log(`Erreur chargement GLB: ${error.message}`, 'error');
     console.error('Erreur chargement GLB:', error);
@@ -183,65 +266,146 @@ function loadTextures(part, colorIndex) {
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
     function loadTextureWithFallback(name, extensions = ['png', 'jpg']) {
-        let texture = null;
-        let loaded = false;
-        extensions.forEach(ext => {
-            const path = `${basePath}${name}.${ext}`;
-            try {
-                texture = textureLoader.load(path, 
+        return new Promise((resolve) => {
+            let attemptIndex = 0;
+            
+            function tryLoad() {
+                if (attemptIndex >= extensions.length) {
+                    log(`✗ Aucune texture trouvée pour ${name}`, 'warning');
+                    resolve(null);
+                    return;
+                }
+                
+                const ext = extensions[attemptIndex];
+                const path = `${basePath}${name}.${ext}`;
+                
+                const texture = textureLoader.load(
+                    path,
+                    // onLoad
                     () => {
-                        if (!loaded) {
-                            log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext}`);
-                            loaded = true;
-                        }
-                    }, // onLoad
-                    undefined, // onProgress
-                    (error) => {
-                        log(`✗ Texture non trouvée: Color_${materialCode}_${name}.${ext}`, 'warning');
+                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext}`);
+                        resolve(texture);
+                    },
+                    // onProgress
+                    undefined,
+                    // onError
+                    () => {
+                        attemptIndex++;
+                        tryLoad();
                     }
                 );
-            } catch (e) {
-                log(`✗ Erreur chargement: Color_${materialCode}_${name}.${ext}`, 'error');
             }
+            
+            tryLoad();
         });
-        return texture;
     }
 
-    const textures = {
-        albedo: loadTextureWithFallback('Albedo', ['png', 'jpg']),
-        ao: loadTextureWithFallback('AO', ['png', 'jpg']),
-        normal: loadTextureWithFallback('Normal', ['png', 'jpg']),
-        specular: loadTextureWithFallback('Spec', ['png', 'jpg']),
-        alpha: loadTextureWithFallback('Alpha', ['png', 'jpg'])
-    };
+    // Charger toutes les textures de manière asynchrone
+    Promise.all([
+        loadTextureWithFallback('Albedo', ['png', 'jpg']),
+        loadTextureWithFallback('AO', ['png', 'jpg']),
+        loadTextureWithFallback('Normal', ['png', 'jpg']),
+        loadTextureWithFallback('Spec', ['png', 'jpg']),
+        loadTextureWithFallback('Alpha', ['png', 'jpg'])
+    ]).then(([albedo, ao, normal, specular, alpha]) => {
+        const textures = { albedo, ao, normal, specular, alpha };
 
-    // Assigner aux matériaux
-    const material = materials[part];
-    if (material) {
-        if (textures.albedo) material.map = textures.albedo;
-        if (textures.ao) material.aoMap = textures.ao;
-        if (textures.normal) material.normalMap = textures.normal;
-        if (textures.specular) material.specularMap = textures.specular;
-        if (textures.alpha) material.alphaMap = textures.alpha;
-        material.needsUpdate = true;
-    }
+        // Assigner aux matériaux
+        const material = materials[part];
+        if (material) {
+            log(`Application des textures sur matériau: ${part}`);
+            
+            // Vérifier si le mesh associé a des UVs
+            let hasUVs = false;
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    if (mats.includes(material)) {
+                        hasUVs = child.geometry.attributes.uv !== undefined;
+                        if (!hasUVs) {
+                            log(`⚠ Mesh "${child.name}" n'a pas d'UVs, génération automatique...`, 'warning');
+                            // Tentative de génération d'UVs basiques (box projection)
+                            if (!child.geometry.attributes.uv) {
+                                const uvArray = [];
+                                const posArray = child.geometry.attributes.position.array;
+                                for (let i = 0; i < posArray.length; i += 3) {
+                                    // Projection basique XY
+                                    uvArray.push((posArray[i] + 1) / 2, (posArray[i + 1] + 1) / 2);
+                                }
+                                child.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
+                                log(`✓ UVs générés automatiquement pour "${child.name}"`);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            if (textures.albedo) {
+                material.map = textures.albedo;
+                material.map.encoding = THREE.sRGBEncoding; // Important pour les couleurs
+            }
+            if (textures.ao) {
+                material.aoMap = textures.ao;
+                material.aoMapIntensity = 1.0; // Ajustable
+                // AO map nécessite UV2, on utilise UV si UV2 n'existe pas
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        if (mats.includes(material) && !child.geometry.attributes.uv2) {
+                            child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
+                            log(`ℹ UV2 copié depuis UV pour AO map sur "${child.name}"`);
+                        }
+                    }
+                });
+            }
+            if (textures.normal) {
+                material.normalMap = textures.normal;
+            }
+            if (textures.specular) {
+                // Pour MeshStandardMaterial, utiliser roughnessMap ou metalnessMap
+                if (material.type === 'MeshStandardMaterial' || material.type === 'MeshPhysicalMaterial') {
+                    material.roughnessMap = textures.specular;
+                } else {
+                    material.specularMap = textures.specular;
+                }
+            }
+            if (textures.alpha) {
+                material.alphaMap = textures.alpha;
+                material.transparent = true;
+            }
+            
+            material.needsUpdate = true;
+            log(`✓ Matériau ${part} mis à jour`);
+        } else {
+            log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
+        }
+    });
 }
 
-// Générer les boutons de couleur dynamiquement
-const colorButtonsDiv = document.getElementById('color-buttons');
-productParts.forEach(part => {
-    const btn = document.createElement('button');
-    btn.id = `${part.toLowerCase()}-color-btn`;
-    btn.className = 'color-btn';
-    btn.textContent = part;
-    btn.addEventListener('click', () => {
-        currentColorIndex[part] = (currentColorIndex[part] + 1) % materialCodesPerPart[part].length;
-        const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
-        log(`Changement ${part}: ${materialCode}`);
-        loadTextures(part, currentColorIndex[part]);
+// Fonction pour générer les boutons de couleur dynamiquement
+function generateColorButtons() {
+    const colorButtonsDiv = document.getElementById('color-buttons');
+    colorButtonsDiv.innerHTML = ''; // Vider les boutons existants
+    
+    productParts.forEach(part => {
+        if (materialCodesPerPart[part] && materialCodesPerPart[part].length > 0) {
+            const btn = document.createElement('button');
+            btn.id = `${part.toLowerCase()}-color-btn`;
+            btn.className = 'color-btn';
+            btn.textContent = `${part} (${materialCodesPerPart[part].length})`;
+            btn.addEventListener('click', () => {
+                currentColorIndex[part] = (currentColorIndex[part] + 1) % materialCodesPerPart[part].length;
+                const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
+                log(`Changement ${part}: ${materialCode}`);
+                loadTextures(part, currentColorIndex[part]);
+            });
+            colorButtonsDiv.appendChild(btn);
+            log(`✓ Bouton créé pour ${part} avec ${materialCodesPerPart[part].length} options`);
+        } else {
+            log(`✗ Pas de codes matériaux pour ${part}`, 'warning');
+        }
     });
-    colorButtonsDiv.appendChild(btn);
-});
+}
 
 // Boutons UI
 document.getElementById('fullscreen-btn').addEventListener('click', () => {
