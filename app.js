@@ -30,13 +30,66 @@ log('Initialisation de la visionneuse 3D...');
 // Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, même que GLB sans extension
 let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configurables du produit
-// Codes de matériaux disponibles par partie (ex: 'W001' pour Wood 001, 'M001' pour Metal 001)
-let materialCodesPerPart = {
-    Pied: ['W001', 'W002', 'M001'],
-    Assise: ['F001', 'F002', 'L001'],
-    Autre: ['P001']
-};
-let currentColorIndex = {Pied: 0, Assise: 0, Autre: 0}; // Index dans le tableau de codes
+// Codes de matériaux disponibles par partie (détectés automatiquement)
+let materialCodesPerPart = {};
+let currentColorIndex = {}; // Index dans le tableau de codes
+
+// Fonction pour scanner les dossiers de textures et extraire les codes matériaux
+async function scanMaterialCodes() {
+    log('Scan des dossiers de textures...');
+    
+    for (const part of productParts) {
+        const codes = new Set();
+        const basePath = `Textures/${modelName}/${part}/`;
+        
+        // Tenter de charger un fichier index.json si disponible (optionnel)
+        try {
+            const response = await fetch(`${basePath}index.json`);
+            if (response.ok) {
+                const data = await response.json();
+                materialCodesPerPart[part] = data.codes || [];
+                currentColorIndex[part] = 0;
+                log(`✓ Codes chargés pour ${part}: ${data.codes.join(', ')}`);
+                continue;
+            }
+        } catch (e) {
+            // Pas d'index.json, on continue avec la détection par essai
+        }
+        
+        // Fallback: essayer des codes communs (à personnaliser selon vos besoins)
+        const commonPrefixes = ['W', 'M', 'F', 'L', 'P', 'C', 'G', 'T', 'S', 'V'];
+        const foundCodes = [];
+        
+        for (const prefix of commonPrefixes) {
+            for (let i = 1; i <= 999; i++) {
+                const code = `${prefix}${String(i).padStart(3, '0')}`;
+                const testPath = `${basePath}Color_${code}_Albedo.png`;
+                
+                // Test si le fichier existe (HEAD request pour éviter de télécharger)
+                try {
+                    const response = await fetch(testPath, { method: 'HEAD' });
+                    if (response.ok) {
+                        foundCodes.push(code);
+                        // On s'arrête après avoir trouvé le dernier code de cette série
+                    } else if (foundCodes.length > 0 && foundCodes[foundCodes.length - 1].startsWith(prefix)) {
+                        // Si on a trouvé des codes avec ce préfixe et qu'on vient d'échouer, on passe au préfixe suivant
+                        break;
+                    }
+                } catch (e) {
+                    if (foundCodes.length > 0 && foundCodes[foundCodes.length - 1].startsWith(prefix)) {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        materialCodesPerPart[part] = foundCodes.length > 0 ? foundCodes : ['W001']; // Valeur par défaut
+        currentColorIndex[part] = 0;
+        log(`✓ Codes détectés pour ${part}: ${materialCodesPerPart[part].join(', ')}`);
+    }
+    
+    log('Scan des textures terminé');
+}
 
 // Initialisation Three.js
 const scene = new THREE.Scene();
@@ -69,18 +122,20 @@ controls.enableRotate = true;
 controls.autoRotateSpeed = autoRotateSpeed;
 
 // Charger le modèle GLB
-log(`Chargement du modèle: ${modelName}.glb`);
-const loader = new GLTFLoader();
-
-// Configurer le DRACOLoader pour les modèles compressés
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-loader.setDRACOLoader(dracoLoader);
-
 let model;
 let materials = {}; // Objet pour stocker les matériaux par partie
 
-loader.load(`${modelName}.glb`, (gltf) => {
+// Scanner les textures d'abord, puis charger le modèle
+scanMaterialCodes().then(() => {
+    log(`Chargement du modèle: ${modelName}.glb`);
+    const loader = new GLTFLoader();
+
+    // Configurer le DRACOLoader pour les modèles compressés
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(dracoLoader);
+
+    loader.load(`${modelName}.glb`, (gltf) => {
     log('Modèle GLB chargé avec succès');
     model = gltf.scene;
     scene.add(model);
@@ -117,6 +172,7 @@ loader.load(`${modelName}.glb`, (gltf) => {
 }, undefined, (error) => {
     log(`Erreur chargement GLB: ${error.message}`, 'error');
     console.error('Erreur chargement GLB:', error);
+});
 });
 
 // Fonction pour charger les textures
