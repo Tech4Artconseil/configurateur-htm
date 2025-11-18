@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visionneuse Fauteuil 3D</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="viewer">
+        <canvas id="threejs-canvas"></canvas>
+        <div id="ui">
+            <div id="top-bar">
+                <button id="fullscreen-btn">⛶</button>
+                <button id="play-btn">▶</button>
+                <button id="pieds-color-btn" class="color-btn">Pieds</button>
+                <button id="assise-color-btn" class="color-btn">Assise</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r167/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.167.1/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.167.1/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
