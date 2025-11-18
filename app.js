@@ -30,8 +30,13 @@ log('Initialisation de la visionneuse 3D...');
 // Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, même que GLB sans extension
 let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configurables du produit
-let numColorsPerPart = {Pied: 1, Assise: 1, Autre: 1}; // Nombre de couleurs par partie
-let currentColorIndex = {Pied: 0, Assise: 0, Autre: 0}; // Index de couleur actuel par partie
+// Codes de matériaux disponibles par partie (ex: 'W001' pour Wood 001, 'M001' pour Metal 001)
+let materialCodesPerPart = {
+    Pied: ['W001', 'W002', 'M001'],
+    Assise: ['F001', 'F002', 'L001'],
+    Autre: ['P001']
+};
+let currentColorIndex = {Pied: 0, Assise: 0, Autre: 0}; // Index dans le tableau de codes
 
 // Initialisation Three.js
 const scene = new THREE.Scene();
@@ -97,7 +102,8 @@ loader.load(`${modelName}.glb`, (gltf) => {
 
     // Charger les textures initiales pour chaque partie
     productParts.forEach(part => {
-        log(`Chargement des textures pour: ${part} (couleur ${currentColorIndex[part]})`);
+        const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
+        log(`Chargement des textures pour: ${part} (matériau ${materialCode})`);
         loadTextures(part, currentColorIndex[part]);
     });
 
@@ -116,10 +122,11 @@ loader.load(`${modelName}.glb`, (gltf) => {
 // Fonction pour charger les textures
 function loadTextures(part, colorIndex) {
     const textureLoader = new THREE.TextureLoader();
-    const basePath = `Textures/${modelName}/${part}/Color_${colorIndex}_`;
+    const materialCode = materialCodesPerPart[part][colorIndex];
+    const basePath = `Textures/${modelName}/${part}/Color_${materialCode}_`;
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
-    function loadTextureWithFallback(name, extensions = ['jpg', 'png']) {
+    function loadTextureWithFallback(name, extensions = ['png', 'jpg']) {
         let texture = null;
         let loaded = false;
         extensions.forEach(ext => {
@@ -128,28 +135,28 @@ function loadTextures(part, colorIndex) {
                 texture = textureLoader.load(path, 
                     () => {
                         if (!loaded) {
-                            log(`✓ Texture chargée: ${name}.${ext}`);
+                            log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext}`);
                             loaded = true;
                         }
                     }, // onLoad
                     undefined, // onProgress
                     (error) => {
-                        log(`✗ Texture non trouvée: ${name}.${ext}`, 'warning');
+                        log(`✗ Texture non trouvée: Color_${materialCode}_${name}.${ext}`, 'warning');
                     }
                 );
             } catch (e) {
-                log(`✗ Erreur chargement: ${name}.${ext}`, 'error');
+                log(`✗ Erreur chargement: Color_${materialCode}_${name}.${ext}`, 'error');
             }
         });
         return texture;
     }
 
     const textures = {
-        albedo: loadTextureWithFallback('Albedo', ['jpg', 'png']),
-        ao: loadTextureWithFallback('AO', ['jpg', 'png']),
+        albedo: loadTextureWithFallback('Albedo', ['png', 'jpg']),
+        ao: loadTextureWithFallback('AO', ['png', 'jpg']),
         normal: loadTextureWithFallback('Normal', ['png', 'jpg']),
-        specular: loadTextureWithFallback('Spec', ['jpg', 'png']),
-        alpha: loadTextureWithFallback('Alpha', ['jpg', 'png'])
+        specular: loadTextureWithFallback('Spec', ['png', 'jpg']),
+        alpha: loadTextureWithFallback('Alpha', ['png', 'jpg'])
     };
 
     // Assigner aux matériaux
@@ -172,7 +179,9 @@ productParts.forEach(part => {
     btn.className = 'color-btn';
     btn.textContent = part;
     btn.addEventListener('click', () => {
-        currentColorIndex[part] = (currentColorIndex[part] + 1) % numColorsPerPart[part];
+        currentColorIndex[part] = (currentColorIndex[part] + 1) % materialCodesPerPart[part].length;
+        const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
+        log(`Changement ${part}: ${materialCode}`);
         loadTextures(part, currentColorIndex[part]);
     });
     colorButtonsDiv.appendChild(btn);

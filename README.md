@@ -15,14 +15,17 @@ Cette visionneuse permet d'afficher un modèle 3D de fauteuil au format GLB/GLTF
 - `Textures/` : Dossier des textures externes
   - `[Model Name]/` (ex: `fauteuil/`)
     - `Pied/`
-      - `Color_0_Albedo.jpg`
-      - `Color_0_AO.jpg`
-      - `Color_0_Normal.png`
-      - `Color_0_Spec.jpg`
-      - `Color_0_Alpha.jpg`
-      - `Color_1_...` (pour chaque couleur)
+      - `Color_W001_Albedo.png` (Wood 001)
+      - `Color_W001_AO.png`
+      - `Color_W001_Normal.png`
+      - `Color_W001_Spec.png`
+      - `Color_W001_Alpha.png`
+      - `Color_W002_...` (Wood 002)
+      - `Color_M001_...` (Metal 001)
     - `Assise/`
-      - `Color_0_Albedo.jpg`
+      - `Color_F001_Albedo.png` (Fabric 001)
+      - `Color_F002_Albedo.png` (Fabric 002)
+      - `Color_L001_...` (Leather 001)
       - etc.
 
 ## Installation et utilisation
@@ -35,6 +38,9 @@ Cette visionneuse permet d'afficher un modèle 3D de fauteuil au format GLB/GLTF
 - Le modèle GLB doit avoir des matériaux nommés 'pieds' et 'assise'.
 - Les textures sont chargées dynamiquement depuis le dossier `Textures/`.
 - Résolution des textures : 720x720 px comme spécifié.
+- **Codes de matériaux** : Format alphanumérique à 4 caractères (1 lettre + 3 chiffres)
+  - Exemples : `W001` (Wood 001), `M001` (Metal 001), `F001` (Fabric 001), `L001` (Leather 001), `P001` (Plastic 001)
+  - Jusqu'à 999 références par catégorie de matériau
 
 ## Réglages exposés
 Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
@@ -46,7 +52,7 @@ Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
 - `backgroundColor` : Couleur de fond (0xffffff)
 - `modelName` : Nom du modèle (sans extension)
 - `productParts` : Tableau des parties configurables (ex: ['Pied', 'Assise'])
-- `numColorsPerPart` : Objet avec nombre de couleurs par partie (ex: {Pied: 3, Assise: 3})
+- `materialCodesPerPart` : Objet avec codes de matériaux par partie (ex: {Pied: ['W001', 'W002', 'M001'], Assise: ['F001', 'L001']})
 
 ## Contrôles
 - **Souris** :
