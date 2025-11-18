@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 // Variables de réglage exposées
 let cameraFov = 75;
@@ -65,6 +66,12 @@ controls.autoRotateSpeed = autoRotateSpeed;
 // Charger le modèle GLB
 log(`Chargement du modèle: ${modelName}.glb`);
 const loader = new GLTFLoader();
+
+// Configurer le DRACOLoader pour les modèles compressés
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+loader.setDRACOLoader(dracoLoader);
+
 let model;
 let materials = {}; // Objet pour stocker les matériaux par partie
 
