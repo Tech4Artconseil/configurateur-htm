@@ -50,3 +50,35 @@ button:hover {
 .color-btn {
     width: 100px;
 }
+
+#log-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    pointer-events: auto;
+    overflow-y: auto;
+    border-top: 2px solid #00ff00;
+}
+
+#log-header {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 5px 10px;
+    font-weight: bold;
+    border-bottom: 1px solid #00ff00;
+}
+
+#log-content {
+    padding: 10px;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+#log-content div {
+    margin-bottom: 5px;
+}

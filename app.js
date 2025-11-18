@@ -1,4 +1,7 @@
-//
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 // Variables de réglage exposées
 let cameraFov = 75;
 let cameraNear = 0.1;
@@ -8,12 +11,26 @@ let ambientLightIntensity = 0.5;
 let autoRotateSpeed = 0.5;
 let backgroundColor = 0xffffff;
 
-// Variables pour textures
+// Fonction de logging
+function log(message, type = 'info') {
+    const logContent = document.getElementById('log-content');
+    const logEntry = document.createElement('div');
+    const timestamp = new Date().toLocaleTimeString();
+    const color = type === 'error' ? '#ff0000' : type === 'warning' ? '#ffaa00' : '#00ff00';
+    logEntry.style.color = color;
+    logEntry.textContent = `[${timestamp}] ${message}`;
+    logContent.appendChild(logEntry);
+    logContent.scrollTop = logContent.scrollHeight;
+    console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
+log('Initialisation de la visionneuse 3D...');
+
+// Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, même que GLB sans extension
-let numColorsPieds = 3; // Nombre de couleurs disponibles pour pieds
-let numColorsAssise = 3; // Nombre de couleurs disponibles pour assise
-let currentPiedsColor = 0;
-let currentAssiseColor = 0;
+let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configurables du produit
+let numColorsPerPart = {Pied: 1, Assise: 1, Autre: 1}; // Nombre de couleurs par partie
+let currentColorIndex = {Pied: 0, Assise: 0, Autre: 0}; // Index de couleur actuel par partie
 
 // Initialisation Three.js
 const scene = new THREE.Scene();
@@ -37,7 +54,7 @@ directionalLight.castShadow = true;
 scene.add(directionalLight);
 
 // Contrôles
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.enableZoom = true;
@@ -46,36 +63,46 @@ controls.enableRotate = true;
 controls.autoRotateSpeed = autoRotateSpeed;
 
 // Charger le modèle GLB
-const loader = new THREE.GLTFLoader();
+log(`Chargement du modèle: ${modelName}.glb`);
+const loader = new GLTFLoader();
 let model;
-let materialPieds;
-let materialAssise;
+let materials = {}; // Objet pour stocker les matériaux par partie
 
 loader.load(`${modelName}.glb`, (gltf) => {
+    log('Modèle GLB chargé avec succès');
     model = gltf.scene;
     scene.add(model);
 
-    // Trouver les matériaux
+    // Trouver les matériaux pour chaque partie
+    let foundMaterials = 0;
     model.traverse((child) => {
         if (child.isMesh) {
-            if (child.material.name === 'pieds') {
-                materialPieds = child.material;
-            } else if (child.material.name === 'assise') {
-                materialAssise = child.material;
-            }
+            productParts.forEach(part => {
+                if (child.material.name === part.toLowerCase()) {
+                    materials[part] = child.material;
+                    foundMaterials++;
+                    log(`Matériau trouvé: ${part}`);
+                }
+            });
         }
     });
+    log(`Total matériaux trouvés: ${foundMaterials}/${productParts.length}`);
 
-    // Charger les textures initiales
-    loadTextures('Pied', currentPiedsColor);
-    loadTextures('Assise', currentAssiseColor);
+    // Charger les textures initiales pour chaque partie
+    productParts.forEach(part => {
+        log(`Chargement des textures pour: ${part} (couleur ${currentColorIndex[part]})`);
+        loadTextures(part, currentColorIndex[part]);
+    });
 
     // Centrer la caméra sur le modèle
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     controls.target.copy(center);
     camera.lookAt(center);
+    log('Caméra centrée sur le modèle');
+    log('Chargement terminé avec succès');
 }, undefined, (error) => {
+    log(`Erreur chargement GLB: ${error.message}`, 'error');
     console.error('Erreur chargement GLB:', error);
 });
 
@@ -84,31 +111,65 @@ function loadTextures(part, colorIndex) {
     const textureLoader = new THREE.TextureLoader();
     const basePath = `Textures/${modelName}/${part}/Color_${colorIndex}_`;
 
+    // Fonction helper pour essayer de charger une texture avec plusieurs extensions
+    function loadTextureWithFallback(name, extensions = ['jpg', 'png']) {
+        let texture = null;
+        let loaded = false;
+        extensions.forEach(ext => {
+            const path = `${basePath}${name}.${ext}`;
+            try {
+                texture = textureLoader.load(path, 
+                    () => {
+                        if (!loaded) {
+                            log(`✓ Texture chargée: ${name}.${ext}`);
+                            loaded = true;
+                        }
+                    }, // onLoad
+                    undefined, // onProgress
+                    (error) => {
+                        log(`✗ Texture non trouvée: ${name}.${ext}`, 'warning');
+                    }
+                );
+            } catch (e) {
+                log(`✗ Erreur chargement: ${name}.${ext}`, 'error');
+            }
+        });
+        return texture;
+    }
+
     const textures = {
-        albedo: textureLoader.load(`${basePath}Albedo.jpg`),
-        ao: textureLoader.load(`${basePath}AO.jpg`),
-        normal: textureLoader.load(`${basePath}Normal.png`),
-        specular: textureLoader.load(`${basePath}Spec.jpg`),
-        alpha: textureLoader.load(`${basePath}Alpha.jpg`)
+        albedo: loadTextureWithFallback('Albedo', ['jpg', 'png']),
+        ao: loadTextureWithFallback('AO', ['jpg', 'png']),
+        normal: loadTextureWithFallback('Normal', ['png', 'jpg']),
+        specular: loadTextureWithFallback('Spec', ['jpg', 'png']),
+        alpha: loadTextureWithFallback('Alpha', ['jpg', 'png'])
     };
 
     // Assigner aux matériaux
-    let material;
-    if (part === 'Pied') {
-        material = materialPieds;
-    } else if (part === 'Assise') {
-        material = materialAssise;
-    }
-
+    const material = materials[part];
     if (material) {
-        material.map = textures.albedo;
-        material.aoMap = textures.ao;
-        material.normalMap = textures.normal;
-        material.specularMap = textures.specular;
-        material.alphaMap = textures.alpha;
+        if (textures.albedo) material.map = textures.albedo;
+        if (textures.ao) material.aoMap = textures.ao;
+        if (textures.normal) material.normalMap = textures.normal;
+        if (textures.specular) material.specularMap = textures.specular;
+        if (textures.alpha) material.alphaMap = textures.alpha;
         material.needsUpdate = true;
     }
 }
+
+// Générer les boutons de couleur dynamiquement
+const colorButtonsDiv = document.getElementById('color-buttons');
+productParts.forEach(part => {
+    const btn = document.createElement('button');
+    btn.id = `${part.toLowerCase()}-color-btn`;
+    btn.className = 'color-btn';
+    btn.textContent = part;
+    btn.addEventListener('click', () => {
+        currentColorIndex[part] = (currentColorIndex[part] + 1) % numColorsPerPart[part];
+        loadTextures(part, currentColorIndex[part]);
+    });
+    colorButtonsDiv.appendChild(btn);
+});
 
 // Boutons UI
 document.getElementById('fullscreen-btn').addEventListener('click', () => {
@@ -117,16 +178,6 @@ document.getElementById('fullscreen-btn').addEventListener('click', () => {
 
 document.getElementById('play-btn').addEventListener('click', () => {
     controls.autoRotate = !controls.autoRotate;
-});
-
-document.getElementById('pieds-color-btn').addEventListener('click', () => {
-    currentPiedsColor = (currentPiedsColor + 1) % numColorsPieds;
-    loadTextures('Pied', currentPiedsColor);
-});
-
-document.getElementById('assise-color-btn').addEventListener('click', () => {
-    currentAssiseColor = (currentAssiseColor + 1) % numColorsAssise;
-    loadTextures('Assise', currentAssiseColor);
 });
 
 // Redimensionnement

@@ -1,4 +1,4 @@
-## Visionneuse Fauteuil 3D
+# Visionneuse Fauteuil 3D
 
 Cette visionneuse permet d'afficher un modèle 3D de fauteuil au format GLB/GLTF avec options de configuration simples pour les pieds et l'assise, utilisant des textures externes.
 
@@ -45,7 +45,8 @@ Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
 - `autoRotateSpeed` : Vitesse d'autorotation
 - `backgroundColor` : Couleur de fond (0xffffff)
 - `modelName` : Nom du modèle (sans extension)
-- `numColorsPieds` / `numColorsAssise` : Nombre de couleurs disponibles
+- `productParts` : Tableau des parties configurables (ex: ['Pied', 'Assise'])
+- `numColorsPerPart` : Objet avec nombre de couleurs par partie (ex: {Pied: 3, Assise: 3})
 
 ## Contrôles
 - **Souris** :
@@ -55,8 +56,7 @@ Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
 - **Boutons UI** :
   - ⛶ : Plein écran
   - ▶ : Activer/désactiver autorotation
-  - Pieds : Changer couleur des pieds (cycle les indices de couleur)
-  - Assise : Changer couleur de l'assise (cycle les indices de couleur)
+  - Boutons de couleur : Un bouton par partie configurable (généré dynamiquement selon `productParts`), pour changer la couleur
 
 ## Améliorations futures
 - Ajouter plus de couleurs
