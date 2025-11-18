@@ -1,4 +1,4 @@
-# Visionneuse Fauteuil 3D
+## Visionneuse Fauteuil 3D
 
 Cette visionneuse permet d'afficher un modèle 3D de fauteuil au format GLB/GLTF avec options de configuration simples pour les pieds et l'assise, utilisant des textures externes.
 

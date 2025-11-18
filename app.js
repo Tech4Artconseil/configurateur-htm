@@ -1,3 +1,4 @@
+//
 // Variables de réglage exposées
 let cameraFov = 75;
 let cameraNear = 0.1;
