@@ -51,7 +51,8 @@ function log(message, type = 'info') {
 log('Initialisation de la visionneuse 3D...');
 
 // Variables pour le produit
-let modelName = 'fauteuil'; // Nom du modèle, même que GLB sans extension
+let modelName = 'fauteuil'; // Nom du modèle, sans extension
+let modelExtension = null; // Extension détectée automatiquement (glb ou gltf)
 let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configurables du produit
 // Codes de matériaux disponibles par partie (détectés automatiquement)
 let materialCodesPerPart = {};
@@ -148,9 +149,30 @@ controls.autoRotateSpeed = autoRotateSpeed;
 let model;
 let materials = {}; // Objet pour stocker les matériaux par partie
 
-// Scanner les textures d'abord, puis charger le modèle
-scanMaterialCodes().then(() => {
-    log(`Chargement du modèle: ${modelName}.glb`);
+// Fonction pour détecter l'extension du modèle disponible
+async function detectModelExtension() {
+    const extensions = ['glb', 'gltf'];
+    for (const ext of extensions) {
+        try {
+            const response = await fetch(`${modelName}.${ext}`, { method: 'HEAD' });
+            if (response.ok) {
+                modelExtension = ext;
+                log(`✓ Modèle trouvé: ${modelName}.${ext}`);
+                return ext;
+            }
+        } catch (e) {
+            // Fichier non trouvé, continuer
+        }
+    }
+    log('✗ Aucun fichier .glb ou .gltf trouvé, tentative avec .glb par défaut', 'warning');
+    modelExtension = 'glb';
+    return 'glb';
+}
+
+// Détecter l'extension, scanner les textures, puis charger le modèle
+detectModelExtension().then(() => scanMaterialCodes()).then(() => {
+    const modelFile = `${modelName}.${modelExtension}`;
+    log(`Chargement du modèle: ${modelFile}`);
     const loader = new GLTFLoader();
 
     // Configurer le DRACOLoader pour les modèles compressés
@@ -158,8 +180,8 @@ scanMaterialCodes().then(() => {
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     loader.setDRACOLoader(dracoLoader);
 
-    loader.load(`${modelName}.glb`, (gltf) => {
-    log('Modèle GLB chargé avec succès');
+    loader.load(modelFile, (gltf) => {
+    log(`Modèle ${modelExtension.toUpperCase()} chargé avec succès`);
     model = gltf.scene;
     scene.add(model);
 
@@ -288,8 +310,8 @@ scanMaterialCodes().then(() => {
     // Générer les boutons de couleur dynamiquement (après le chargement)
     generateColorButtons();
 }, undefined, (error) => {
-    log(`Erreur chargement GLB: ${error.message}`, 'error');
-    console.error('Erreur chargement GLB:', error);
+    log(`Erreur chargement ${modelExtension.toUpperCase()}: ${error.message}`, 'error');
+    console.error(`Erreur chargement ${modelExtension.toUpperCase()}:`, error);
 });
 });
 
