@@ -14,14 +14,15 @@ let autoRotateSpeed = 0.5;
 let backgroundColor = 0xffffff;
 
 // Configuration des canaux de textures à charger (true = actif, false = désactivé)
+// flipY: true = retourner verticalement (défaut), false = garder orientation originale
 let textureChannels = {
-    albedo: { enabled: true, extensions: ['jpg', 'png'] },
-    alpha: { enabled: false, extensions: ['jpg', 'png'] },
-    emission: { enabled: false, extensions: ['jpg', 'png'] },
-    height: { enabled: false, extensions: ['jpg', 'png'] },
-    metallic: { enabled: false, extensions: ['jpg', 'png'] },
-    normalGL: { enabled: false, extensions: ['png', 'jpg'] },
-    occlusion: { enabled: false, extensions: ['jpg', 'png'] }
+    albedo: { enabled: true, extensions: ['jpg', 'png'], flipY: false },
+    alpha: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    emission: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    height: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    metallic: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    normalGL: { enabled: false, extensions: ['png', 'jpg'], flipY: false },
+    occlusion: { enabled: false, extensions: ['jpg', 'png'], flipY: false }
 };
 
 // Configuration de la gestion des UVs
@@ -322,7 +323,7 @@ function loadTextures(part, colorIndex) {
     const basePath = `Textures/${modelName}/${part}/Color_${materialCode}_`;
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
-    function loadTextureWithFallback(name, extensions = ['png', 'jpg']) {
+    function loadTextureWithFallback(name, extensions = ['png', 'jpg'], flipY = true) {
         return new Promise((resolve) => {
             let attemptIndex = 0;
             
@@ -339,9 +340,10 @@ function loadTextures(part, colorIndex) {
                 const texture = textureLoader.load(
                     path,
                     // onLoad
-                    () => {
-                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext}`);
-                        resolve(texture);
+                    (loadedTexture) => {
+                        loadedTexture.flipY = flipY;
+                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext} (flipY: ${flipY})`);
+                        resolve(loadedTexture);
                     },
                     // onProgress
                     undefined,
@@ -365,9 +367,9 @@ function loadTextures(part, colorIndex) {
         if (config.enabled) {
             // Capitaliser la première lettre pour le nom de fichier
             const channelName = channel.charAt(0).toUpperCase() + channel.slice(1);
-            texturePromises.push(loadTextureWithFallback(channelName, config.extensions));
+            texturePromises.push(loadTextureWithFallback(channelName, config.extensions, config.flipY));
             enabledChannels.push(channel);
-            log(`  → Chargement ${channel} activé`);
+            log(`  → Chargement ${channel} activé (flipY: ${config.flipY})`);
         } else {
             log(`  ⊘ Chargement ${channel} désactivé`, 'info');
         }
