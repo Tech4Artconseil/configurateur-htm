@@ -46,11 +46,14 @@ let forceBasicMaterial = true;  // true = Remplacer les matériaux GLB par MeshB
 // Tone Mapping - Options: NoToneMapping, LinearToneMapping, ReinhardToneMapping, CinematicToneMapping, ACESFilmicToneMapping
 let toneMappingUnlit = THREE.NoToneMapping;  // Mode Unlit: NoToneMapping pour rendu fidèle aux textures bakées
 let toneMappingLit = THREE.ACESFilmicToneMapping;  // Mode Lit: ACESFilmicToneMapping pour look cinématographique
+//THREE.NoToneMapping  //THREE.LinearToneMapping  //THREE.ReinhardToneMapping  //THREE.CinematicToneMapping  //THREE.ACESFilmicToneMapping
+
 let toneMappingExposureUnlit = 1.0;  // Exposition en mode Unlit (1.0 = neutre, 0.5 = sombre, 2.0 = lumineux)
 let toneMappingExposureLit = 1.0;  // Exposition en mode Lit (ajuster selon l'éclairage de la scène)
-// Color Space des textures (SRGBColorSpace ou LinearSRGBColorSpace)
+// Color Space des textures - Options: THREE.SRGBColorSpace (recommandé pour couleurs), THREE.LinearSRGBColorSpace (pour données linéaires)
 let textureColorSpace = THREE.SRGBColorSpace;  // sRGB recommandé pour textures albedo/couleur
-let outputColorSpace = THREE.SRGBColorSpace;  // Output sRGB recommandé pour affichage écran
+// Output Color Space - Options: THREE.SRGBColorSpace (standard écran), THREE.LinearSRGBColorSpace (rendu linéaire), THREE.DisplayP3ColorSpace (écrans P3)
+let outputColorSpace = THREE.SRGBColorSpace;  // Output sRGB recommandé pour affichage écran standard
 
 // Fonction de logging
 function log(message, type = 'info') {

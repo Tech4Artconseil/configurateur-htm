@@ -55,9 +55,12 @@ Vous pouvez activer/désactiver chaque canal dans la variable `textureChannels` 
 4. Pour hébergement sur serveur : placez tous les fichiers sur votre serveur web (attention aux CORS pour les textures).
 
 ## Configuration du modèle
-- Le modèle GLB doit avoir des matériaux nommés 'pieds' et 'assise'.
-- Les textures sont chargées dynamiquement depuis le dossier `Textures/`.
-- Résolution des textures : 720x720 px comme spécifié.
+- **Formats supportés** : `.glb` (binaire) ou `.gltf` (texte) - détection automatique
+  - Priorité : `.glb` d'abord (plus optimisé), puis `.gltf`
+  - Placez votre fichier `fauteuil.glb` ou `fauteuil.gltf` dans le dossier racine
+- Le modèle doit avoir des matériaux nommés selon les parties configurables (ex: 'Pied', 'Assise')
+- Les textures sont chargées dynamiquement depuis le dossier `Textures/`
+- Résolution des textures : 720x720 px comme spécifié
 - **Codes de matériaux** : Format alphanumérique à 4 caractères (1 lettre + 3 chiffres)
   - Exemples : `W001` (Wood 001), `M001` (Metal 001), `F001` (Fabric 001), `L001` (Leather 001), `P001` (Plastic 001)
   - Jusqu'à 999 références par catégorie de matériau
@@ -82,17 +85,61 @@ Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
 - `textureChannels` : Objet pour activer/désactiver les canaux de textures et définir leurs extensions
   ```javascript
   {
-    albedo: { enabled: true, extensions: ['jpg', 'png'] },
-    alpha: { enabled: true, extensions: ['jpg', 'png'] },
-    emission: { enabled: false, extensions: ['jpg', 'png'] },
-    height: { enabled: false, extensions: ['jpg', 'png'] },
-    metallic: { enabled: true, extensions: ['jpg', 'png'] },
-    normalGL: { enabled: true, extensions: ['png', 'jpg'] },
-    occlusion: { enabled: true, extensions: ['jpg', 'png'] }
+    albedo: { enabled: true, extensions: ['jpg', 'png'], flipY: false },
+    alpha: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    emission: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    height: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    metallic: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
+    normalGL: { enabled: false, extensions: ['png', 'jpg'], flipY: false },
+    occlusion: { enabled: false, extensions: ['jpg', 'png'], flipY: false }
   }
   ```
   - `enabled: true/false` : Active ou désactive le chargement de ce canal
   - `extensions: ['jpg', 'png']` : Ordre de priorité des extensions à essayer
+  - `flipY: true/false` : Retourne la texture verticalement (false = orientation originale)
+
+### Mode d'éclairage et rendu
+#### Mode Unlit vs Lit
+- `unlitMode` : `true` = Mode Unlit (textures bakées, pas d'éclairage temps réel), `false` = Mode Lit (éclairage dynamique PBR)
+- `forceBasicMaterial` : `true` = Remplace les matériaux GLB par MeshBasicMaterial (optimal pour Unlit), `false` = Utilise les matériaux existants
+- `emissiveColor` : Couleur émissive en mode Unlit (ex: `0xffffff` = blanc)
+- `emissiveIntensity` : Intensité émissive en mode Unlit (1.0 = 100%, 0.5 = 50%)
+
+#### Tone Mapping
+Le tone mapping contrôle comment les couleurs HDR sont converties pour l'affichage à l'écran.
+
+**Options disponibles :**
+- `THREE.NoToneMapping` : Aucun tone mapping (recommandé pour Unlit avec textures bakées)
+- `THREE.LinearToneMapping` : Tone mapping linéaire simple
+- `THREE.ReinhardToneMapping` : Algorithme Reinhard classique
+- `THREE.CinematicToneMapping` : Look cinématographique
+- `THREE.ACESFilmicToneMapping` : ACES standard (recommandé pour Lit)
+
+**Configuration :**
+```javascript
+// Mode Unlit (textures bakées)
+toneMappingUnlit = THREE.NoToneMapping;  // Rendu fidèle aux textures
+toneMappingExposureUnlit = 1.0;  // Exposition neutre
+
+// Mode Lit (éclairage dynamique)
+toneMappingLit = THREE.ACESFilmicToneMapping;  // Look cinéma
+toneMappingExposureLit = 1.0;  // Ajuster selon l'éclairage
+```
+
+- `toneMappingExposure` : Contrôle la luminosité globale (0.5 = sombre, 1.0 = neutre, 2.0 = lumineux)
+
+#### Color Space (Gestion des couleurs)
+**Textures :**
+- `textureColorSpace` : Space couleur pour les textures albedo/émission
+  - `THREE.SRGBColorSpace` : sRGB standard (recommandé pour textures couleur)
+  - `THREE.LinearSRGBColorSpace` : Espace linéaire (pour données techniques)
+  - Les textures de données (normal, metallic, ao, height) sont automatiquement en linéaire
+
+**Output du Renderer :**
+- `outputColorSpace` : Space couleur de sortie pour l'affichage
+  - `THREE.SRGBColorSpace` : Standard pour écrans classiques (recommandé)
+  - `THREE.LinearSRGBColorSpace` : Rendu linéaire
+  - `THREE.DisplayP3ColorSpace` : Pour écrans Wide Gamut (Apple, certains écrans HDR)
 
 ## Contrôles
 - **Souris** :
