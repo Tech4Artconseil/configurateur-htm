@@ -259,21 +259,34 @@ initializeEnvironment();
 ## API / Fonctions utiles
 
 ### Fonctions d'environnement
+- `scanEnvironmentMaps()` : Scanne le dossier `Textures/environement/` pour détecter les fichiers disponibles
+  - Recherche les noms définis dans `envirfilename` avec les extensions JPG, JPEG, PNG, HDR, EXR
+  - Retourne un tableau d'objets avec `{name, path, extension, displayName}`
+- `generateEnvironmentSelector()` : Génère le menu déroulant de sélection d'environment maps
+  - Crée l'option "Aucun (couleur de fond)"
+  - Ajoute toutes les environment maps détectées
+  - Connecte le changement au `changeEnvironment()`
+- `loadEnvironmentMap(path)` : Charge une environment map depuis un fichier
+  - Détection automatique du format (JPG/PNG/HDR/EXR)
+  - Utilise le loader approprié (TextureLoader, RGBELoader, EXRLoader)
+  - Configure automatiquement le colorSpace selon le format
 - `initializeEnvironment()` : Initialise l'environnement au démarrage
 - `changeEnvironment(options)` : Change l'environnement dynamiquement
   - Options : `{type, color, envMapPath, intensity, rotation}`
 - `applyEnvMapIntensityToMaterials(intensity)` : Applique l'intensité aux matériaux
+- `applyUnlitEnvironment()` : Applique l'environnement en mode Unlit (couleur + lumière ambiante)
+- `applyLitEnvironment()` : Applique l'environnement en mode Lit (environment map ou couleur)
 
 ### Fonctions de matériaux
 - `applyMaterialMode(material, textures)` : Applique le mode Unlit ou Lit à un matériau
 - `createBasicMaterialFromExisting(material)` : Crée un MeshBasicMaterial depuis un matériau existant
 
 ## Améliorations futures
-- Support des fichiers HDR pour environment maps (via RGBELoader)
 - Interface pour sélectionner couleur spécifique
+- Contrôles UI pour ajuster l'intensité et la rotation de l'environment map en temps réel
 - Sauvegarde/chargement de configurations
 - Export d'images
-- Prévisualisation des environment maps
+- Prévisualisation miniature des environment maps dans le sélecteur
 
 ## Dépendances
 - Three.js : https://cdnjs.cloudflare.com/ajax/libs/three.js/r167/three.min.js
