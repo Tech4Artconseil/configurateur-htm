@@ -55,6 +55,15 @@ let textureColorSpace = THREE.SRGBColorSpace;  // sRGB recommandé pour textures
 // Output Color Space - Options: THREE.SRGBColorSpace (standard écran), THREE.LinearSRGBColorSpace (rendu linéaire), THREE.DisplayP3ColorSpace (écrans P3)
 let outputColorSpace = THREE.SRGBColorSpace;  // Output sRGB recommandé pour affichage écran standard
 
+// Configuration de l'environnement
+let useEnvironmentMap = false;  // true = Utiliser une environment map, false = Utiliser la couleur de fond
+let environmentMapPath = null;  // Chemin vers l'environment map HDR (ex: 'environment.hdr') ou null pour couleur unie
+let envMapIntensity = 1.0;  // Intensité de l'environment map en mode Lit (0.0 à 2.0+)
+let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.PI * 2)
+// Mode Unlit : utilise ambientLightIntensity et backgroundColor comme équivalence
+let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
+let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
+
 // Fonction de logging
 function log(message, type = 'info') {
     const logContent = document.getElementById('log-content');
@@ -152,6 +161,9 @@ renderer.toneMapping = unlitMode ? toneMappingUnlit : toneMappingLit;
 renderer.toneMappingExposure = unlitMode ? toneMappingExposureUnlit : toneMappingExposureLit;
 renderer.outputColorSpace = outputColorSpace;
 log(`Renderer configuré: toneMapping=${getToneMappingName(renderer.toneMapping)}, exposure=${renderer.toneMappingExposure}, outputColorSpace=${outputColorSpace}`);
+
+// Initialiser l'environnement
+initializeEnvironment();
 
 // Lumières
 const ambientLight = new THREE.AmbientLight(0xffffff, ambientLightIntensity);
@@ -475,6 +487,169 @@ function loadTextures(part, colorIndex) {
 }
 
 // ================================================================================
+// FONCTIONS DE GESTION DE L'ENVIRONNEMENT
+// ================================================================================
+
+/**
+ * Initialise l'environnement de la scène (background et environment map)
+ * Configure différemment selon le mode Unlit ou Lit
+ */
+function initializeEnvironment() {
+    if (unlitMode) {
+        applyUnlitEnvironment();
+    } else {
+        applyLitEnvironment();
+    }
+}
+
+/**
+ * Applique l'environnement pour le mode Unlit
+ * Utilise la couleur de fond et l'intensité ambiante comme équivalents
+ */
+function applyUnlitEnvironment() {
+    // Couleur de fond
+    scene.background = new THREE.Color(backgroundColorUnlit);
+    log(`Environnement Unlit: background=${backgroundColorUnlit.toString(16)}, ambientIntensity=${ambientLightIntensityUnlit}`);
+    
+    // Ajuster l'intensité de la lumière ambiante (équivalent envMapIntensity)
+    if (ambientLight) {
+        ambientLight.intensity = ambientLightIntensityUnlit;
+    }
+    
+    // Pas d'environment map en mode Unlit (textures bakées)
+    scene.environment = null;
+}
+
+/**
+ * Applique l'environnement pour le mode Lit
+ * Utilise environment map si disponible, sinon couleur de fond
+ */
+async function applyLitEnvironment() {
+    if (useEnvironmentMap && environmentMapPath) {
+        // Charger l'environment map
+        try {
+            log(`Chargement de l'environment map: ${environmentMapPath}`);
+            const envMap = await loadEnvironmentMap(environmentMapPath);
+            
+            if (envMap) {
+                // Appliquer la rotation si spécifiée
+                if (envMapRotation !== 0) {
+                    // Rotation de l'environment map via une matrice
+                    scene.environmentRotation = new THREE.Euler(0, envMapRotation, 0);
+                }
+                
+                scene.environment = envMap;
+                scene.background = envMap;  // Utiliser aussi comme background
+                
+                // Appliquer l'intensité aux matériaux
+                applyEnvMapIntensityToMaterials(envMapIntensity);
+                
+                log(`✓ Environment map appliquée (intensity: ${envMapIntensity}, rotation: ${envMapRotation} rad)`);
+            } else {
+                log('✗ Échec chargement environment map, utilisation couleur de fond', 'warning');
+                scene.background = new THREE.Color(backgroundColor);
+                scene.environment = null;
+            }
+        } catch (error) {
+            log(`✗ Erreur environment map: ${error.message}`, 'error');
+            scene.background = new THREE.Color(backgroundColor);
+            scene.environment = null;
+        }
+    } else {
+        // Pas d'environment map, utiliser couleur de fond
+        scene.background = new THREE.Color(backgroundColor);
+        scene.environment = null;
+        log(`Environnement Lit: background couleur unie (${backgroundColor.toString(16)})`);
+    }
+}
+
+/**
+ * Charge une environment map depuis un fichier HDR ou texture équirectangulaire
+ * @param {string} path - Chemin vers le fichier d'environment map
+ * @returns {Promise<THREE.Texture>} - La texture d'environment map chargée
+ */
+async function loadEnvironmentMap(path) {
+    return new Promise((resolve, reject) => {
+        // Pour HDR, il faudrait RGBELoader
+        // Pour l'instant, on supporte les images standard (JPG/PNG) en équirectangulaire
+        const loader = new THREE.TextureLoader();
+        
+        loader.load(
+            path,
+            (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                texture.colorSpace = THREE.SRGBColorSpace;
+                resolve(texture);
+            },
+            undefined,
+            (error) => {
+                reject(error);
+            }
+        );
+    });
+}
+
+/**
+ * Applique l'intensité de l'environment map à tous les matériaux de la scène
+ * @param {number} intensity - Intensité de l'environment map (0.0 à 2.0+)
+ */
+function applyEnvMapIntensityToMaterials(intensity) {
+    if (!model) return;
+    
+    model.traverse((child) => {
+        if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((mat) => {
+                if (mat.envMapIntensity !== undefined) {
+                    mat.envMapIntensity = intensity;
+                    mat.needsUpdate = true;
+                }
+            });
+        }
+    });
+}
+
+/**
+ * Change l'environnement dynamiquement (couleur ou environment map)
+ * @param {Object} options - Options de configuration
+ * @param {string} options.type - Type: 'color' ou 'envmap'
+ * @param {number} options.color - Couleur hexadécimale (si type='color')
+ * @param {string} options.envMapPath - Chemin vers envMap (si type='envmap')
+ * @param {number} options.intensity - Intensité (envMapIntensity pour Lit, ambientLight pour Unlit)
+ * @param {number} options.rotation - Rotation en radians (mode Lit uniquement)
+ */
+async function changeEnvironment(options = {}) {
+    const { type = 'color', color = 0xffffff, envMapPath = null, intensity = 1.0, rotation = 0 } = options;
+    
+    if (unlitMode) {
+        // Mode Unlit: changer couleur de fond et intensité ambiante
+        backgroundColorUnlit = color;
+        ambientLightIntensityUnlit = intensity;
+        log(`Changement environnement Unlit: color=0x${color.toString(16)}, intensity=${intensity}`);
+        applyUnlitEnvironment();
+    } else {
+        // Mode Lit: changer envMap ou couleur
+        if (type === 'envmap' && envMapPath) {
+            useEnvironmentMap = true;
+            environmentMapPath = envMapPath;
+            envMapIntensity = intensity;
+            envMapRotation = rotation;
+            log(`Changement environnement Lit: envMap=${envMapPath}, intensity=${intensity}, rotation=${rotation}`);
+            await applyLitEnvironment();
+            
+            // Réappliquer aux matériaux existants
+            applyEnvMapIntensityToMaterials(intensity);
+        } else {
+            useEnvironmentMap = false;
+            backgroundColor = color;
+            log(`Changement environnement Lit: color=0x${color.toString(16)}`);
+            scene.background = new THREE.Color(color);
+            scene.environment = null;
+        }
+    }
+}
+
+// ================================================================================
 // FONCTIONS DE GESTION DES MATÉRIAUX ET MODES D'ÉCLAIRAGE
 // ================================================================================
 
@@ -512,7 +687,7 @@ function createBasicMaterialFromExisting(existingMaterial) {
 
 /**
  * Applique le mode d'éclairage (Unlit ou Lit) au matériau avec les textures fournies
- * Met à jour également les paramètres du renderer (tone mapping, exposition)
+ * Met à jour également les paramètres du renderer (tone mapping, exposition) et l'environnement
  * @param {THREE.Material} material - Le matériau Three.js à modifier
  * @param {Object} textures - Objet contenant les textures chargées (albedo, alpha, emission, etc.)
  */
@@ -523,12 +698,16 @@ function applyMaterialMode(material, textures) {
         renderer.toneMappingExposure = toneMappingExposureUnlit;
         log(`  ℹ Renderer: toneMapping=${getToneMappingName(toneMappingUnlit)}, exposure=${toneMappingExposureUnlit}`);
         applyUnlitMode(material, textures);
+        // Mettre à jour l'environnement Unlit
+        applyUnlitEnvironment();
     } else {
         // Appliquer les paramètres de rendu Lit
         renderer.toneMapping = toneMappingLit;
         renderer.toneMappingExposure = toneMappingExposureLit;
         log(`  ℹ Renderer: toneMapping=${getToneMappingName(toneMappingLit)}, exposure=${toneMappingExposureLit}`);
         applyLitMode(material, textures);
+        // Mettre à jour l'environnement Lit (asynchrone)
+        applyLitEnvironment();
     }
 }
 

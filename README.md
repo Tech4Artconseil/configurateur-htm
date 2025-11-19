@@ -141,6 +141,83 @@ toneMappingExposureLit = 1.0;  // Ajuster selon l'éclairage
   - `THREE.LinearSRGBColorSpace` : Rendu linéaire
   - `THREE.DisplayP3ColorSpace` : Pour écrans Wide Gamut (Apple, certains écrans HDR)
 
+### Gestion de l'environnement
+Le système permet de configurer l'environnement de la scène de manière différente selon le mode d'éclairage.
+
+#### Mode Lit (éclairage dynamique)
+Utilise des **environment maps** pour les réflections et l'éclairage indirect :
+
+**Configuration :**
+```javascript
+// Activer l'environment map
+useEnvironmentMap = true;
+environmentMapPath = 'environment.jpg';  // Chemin vers image équirectangulaire
+envMapIntensity = 1.0;  // Intensité des réflections (0.0 à 2.0+)
+envMapRotation = 0;  // Rotation en radians (0 à Math.PI * 2)
+```
+
+**Variables disponibles :**
+- `useEnvironmentMap` : Active/désactive l'environment map
+- `environmentMapPath` : Chemin vers une image équirectangulaire (JPG/PNG) ou null pour couleur unie
+- `envMapIntensity` : Intensité des réflections sur les matériaux (0.0 = pas de réflection, 1.0 = normal, 2.0 = réflections intenses)
+- `envMapRotation` : Rotation de l'environment map en radians pour ajuster l'orientation de l'éclairage
+- `backgroundColor` : Couleur de fond si pas d'environment map
+
+**Formats supportés :**
+- Images équirectangulaires JPG/PNG (360°)
+- Pour HDR (.hdr), importer `RGBELoader` de Three.js
+
+#### Mode Unlit (textures bakées)
+Utilise des **paramètres simplifiés** comme équivalents :
+
+**Configuration :**
+```javascript
+// Apparence en mode Unlit
+backgroundColorUnlit = 0xffffff;  // Couleur de fond (équivalent envMap)
+ambientLightIntensityUnlit = 0.5;  // Intensité ambiante (équivalent envMapIntensity)
+```
+
+**Variables disponibles :**
+- `backgroundColorUnlit` : Couleur de fond de la scène (valeur hexadécimale)
+- `ambientLightIntensityUnlit` : Intensité de la lumière ambiante (0.0 = sombre, 1.0 = lumineux)
+
+**Équivalences Mode Lit ↔ Mode Unlit :**
+| Mode Lit | Mode Unlit | Description |
+|----------|------------|-------------|
+| `environmentMap` | `backgroundColor` | Environnement visuel |
+| `envMapIntensity` | `ambientLightIntensity` | Intensité lumineuse globale |
+| `envMapRotation` | N/A | Rotation (non applicable en Unlit) |
+
+#### Changer l'environnement dynamiquement
+Utilisez la fonction `changeEnvironment()` pour modifier l'environnement en cours d'exécution :
+
+**Exemple 1 - Charger une environment map (Mode Lit) :**
+```javascript
+await changeEnvironment({
+    type: 'envmap',
+    envMapPath: 'studio_lighting.jpg',
+    intensity: 1.5,
+    rotation: Math.PI / 4  // 45 degrés
+});
+```
+
+**Exemple 2 - Couleur unie (Mode Lit ou Unlit) :**
+```javascript
+await changeEnvironment({
+    type: 'color',
+    color: 0x87CEEB,  // Bleu ciel
+    intensity: 0.8
+});
+```
+
+**Exemple 3 - Fond sombre pour mode Unlit :**
+```javascript
+unlitMode = true;
+backgroundColorUnlit = 0x1a1a1a;  // Gris foncé
+ambientLightIntensityUnlit = 0.3;
+initializeEnvironment();
+```
+
 ## Contrôles
 - **Souris** :
   - Clic gauche + déplacer : Orbiter autour du fauteuil
@@ -151,11 +228,24 @@ toneMappingExposureLit = 1.0;  // Ajuster selon l'éclairage
   - ▶ : Activer/désactiver autorotation
   - Boutons de couleur : Un bouton par partie configurable (généré dynamiquement selon `productParts`), pour changer la couleur
 
+## API / Fonctions utiles
+
+### Fonctions d'environnement
+- `initializeEnvironment()` : Initialise l'environnement au démarrage
+- `changeEnvironment(options)` : Change l'environnement dynamiquement
+  - Options : `{type, color, envMapPath, intensity, rotation}`
+- `applyEnvMapIntensityToMaterials(intensity)` : Applique l'intensité aux matériaux
+
+### Fonctions de matériaux
+- `applyMaterialMode(material, textures)` : Applique le mode Unlit ou Lit à un matériau
+- `createBasicMaterialFromExisting(material)` : Crée un MeshBasicMaterial depuis un matériau existant
+
 ## Améliorations futures
-- Ajouter plus de couleurs
+- Support des fichiers HDR pour environment maps (via RGBELoader)
 - Interface pour sélectionner couleur spécifique
 - Sauvegarde/chargement de configurations
 - Export d'images
+- Prévisualisation des environment maps
 
 ## Dépendances
 - Three.js : https://cdnjs.cloudflare.com/ajax/libs/three.js/r167/three.min.js
