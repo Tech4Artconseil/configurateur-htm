@@ -36,6 +36,22 @@ let showNormals = false;        // Afficher les normales sous forme de flèches
 let normalHelperSize = 0.1;     // Taille des flèches de normales
 let normalHelperColor = 0x00ff00; // Couleur des flèches (vert par défaut)
 
+// Configuration du mode d'éclairage
+let unlitMode = true;  // true = Mode Unlit (pas d'éclairage temps réel, textures bakées), false = Mode lit (éclairage dynamique)
+let emissiveColor = 0xffffff;  // Couleur émissive en mode Unlit (0xffffff = blanc, affichage fidèle)
+let emissiveIntensity = 1.0;  // Intensité émissive en mode Unlit (1.0 = 100%, 0.5 = 50%, etc.)
+let forceBasicMaterial = true;  // true = Remplacer les matériaux GLB par MeshBasicMaterial (optimal pour Unlit), false = Utiliser les matériaux existants
+
+// Configuration du Tone Mapping et Color Space
+// Tone Mapping - Options: NoToneMapping, LinearToneMapping, ReinhardToneMapping, CinematicToneMapping, ACESFilmicToneMapping
+let toneMappingUnlit = THREE.NoToneMapping;  // Mode Unlit: NoToneMapping pour rendu fidèle aux textures bakées
+let toneMappingLit = THREE.ACESFilmicToneMapping;  // Mode Lit: ACESFilmicToneMapping pour look cinématographique
+let toneMappingExposureUnlit = 1.0;  // Exposition en mode Unlit (1.0 = neutre, 0.5 = sombre, 2.0 = lumineux)
+let toneMappingExposureLit = 1.0;  // Exposition en mode Lit (ajuster selon l'éclairage de la scène)
+// Color Space des textures (SRGBColorSpace ou LinearSRGBColorSpace)
+let textureColorSpace = THREE.SRGBColorSpace;  // sRGB recommandé pour textures albedo/couleur
+let outputColorSpace = THREE.SRGBColorSpace;  // Output sRGB recommandé pour affichage écran
+
 // Fonction de logging
 function log(message, type = 'info') {
     const logContent = document.getElementById('log-content');
@@ -127,6 +143,12 @@ const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('thre
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// Configuration du tone mapping et color space
+renderer.toneMapping = unlitMode ? toneMappingUnlit : toneMappingLit;
+renderer.toneMappingExposure = unlitMode ? toneMappingExposureUnlit : toneMappingExposureLit;
+renderer.outputColorSpace = outputColorSpace;
+log(`Renderer configuré: toneMapping=${getToneMappingName(renderer.toneMapping)}, exposure=${renderer.toneMappingExposure}, outputColorSpace=${outputColorSpace}`);
 
 // Lumières
 const ambientLight = new THREE.AmbientLight(0xffffff, ambientLightIntensity);
@@ -266,12 +288,26 @@ detectModelExtension().then(() => scanMaterialCodes()).then(() => {
         if (child.isMesh) {
             const materialsArray = Array.isArray(child.material) ? child.material : [child.material];
             
-            materialsArray.forEach((mat) => {
+            materialsArray.forEach((mat, index) => {
                 productParts.forEach(part => {
                     if (mat.name.toLowerCase() === part.toLowerCase()) {
-                        materials[part] = mat;
-                        foundMaterials++;
-                        log(`✓ Matériau "${mat.name}" assigné à partie: ${part}`);
+                        // Remplacer par MeshBasicMaterial si demandé
+                        if (forceBasicMaterial) {
+                            const basicMat = createBasicMaterialFromExisting(mat);
+                            materials[part] = basicMat;
+                            // Remplacer le matériau sur le mesh
+                            if (Array.isArray(child.material)) {
+                                child.material[index] = basicMat;
+                            } else {
+                                child.material = basicMat;
+                            }
+                            foundMaterials++;
+                            log(`✓ Matériau "${mat.name}" (${mat.type}) remplacé par MeshBasicMaterial pour partie: ${part}`);
+                        } else {
+                            materials[part] = mat;
+                            foundMaterials++;
+                            log(`✓ Matériau "${mat.name}" (${mat.type}) assigné à partie: ${part}`);
+                        }
                     }
                 });
             });
@@ -342,7 +378,14 @@ function loadTextures(part, colorIndex) {
                     // onLoad
                     (loadedTexture) => {
                         loadedTexture.flipY = flipY;
-                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext} (flipY: ${flipY})`);
+                        // Appliquer le colorSpace approprié selon le type de texture
+                        if (name.toLowerCase().includes('albedo') || name.toLowerCase().includes('emission')) {
+                            loadedTexture.colorSpace = textureColorSpace;
+                        } else {
+                            // Textures de données (normal, metallic, roughness, ao, height) en linéaire
+                            loadedTexture.colorSpace = THREE.LinearSRGBColorSpace;
+                        }
+                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext} (flipY: ${flipY}, colorSpace: ${loadedTexture.colorSpace})`);
                         resolve(loadedTexture);
                     },
                     // onProgress
@@ -385,7 +428,10 @@ function loadTextures(part, colorIndex) {
         // Assigner aux matériaux
         const material = materials[part];
         if (material) {
-            log(`Application des textures sur matériau: ${part}`);
+            log(`Application des textures sur matériau: ${part} (mode: ${unlitMode ? 'Unlit' : 'Lit'})`);
+            
+            // Appliquer le mode Unlit ou Lit
+            applyMaterialMode(material, textures);
             
             // Vérifier et générer les UVs si nécessaire
             if (uvSettings.autoGenerateUV) {
@@ -414,67 +460,8 @@ function loadTextures(part, colorIndex) {
                 });
             }
             
-            // Albedo (couleur de base)
-            if (textures.albedo) {
-                material.map = textures.albedo;
-                material.map.encoding = THREE.sRGBEncoding; // Important pour les couleurs
-                log(`  ✓ Albedo appliqué`);
-            }
-            
-            // Alpha (transparence)
-            if (textures.alpha) {
-                material.alphaMap = textures.alpha;
-                material.transparent = true;
-                log(`  ✓ Alpha appliqué`);
-            }
-            
-            // Emission (émission de lumière)
-            if (textures.emission) {
-                material.emissiveMap = textures.emission;
-                material.emissive = new THREE.Color(0xffffff);
-                material.emissiveIntensity = 1.0; // Ajustable
-                log(`  ✓ Emission appliqué`);
-            }
-            
-            // Height/Displacement (relief)
-            if (textures.height) {
-                material.displacementMap = textures.height;
-                material.displacementScale = 0.1; // Ajustable selon vos besoins
-                log(`  ✓ Height/Displacement appliqué`);
-            }
-            
-            // Metallic (métallic)
-            if (textures.metallic) {
-                material.metalnessMap = textures.metallic;
-                material.metalness = 1.0; // Ajustable
-                log(`  ✓ Metallic appliqué`);
-            }
-            
-            // NormalGL (normal map)
-            if (textures.normalGL) {
-                material.normalMap = textures.normalGL;
-                material.normalScale = new THREE.Vector2(1, 1); // Ajustable
-                log(`  ✓ NormalGL appliqué`);
-            }
-            
-            // Occlusion (ambient occlusion)
-            if (textures.occlusion) {
-                material.aoMap = textures.occlusion;
-                material.aoMapIntensity = 1.0; // Ajustable
-                // AO map nécessite UV2, on utilise UV si UV2 n'existe pas
-                if (uvSettings.autoGenerateUV2) {
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            const mats = Array.isArray(child.material) ? child.material : [child.material];
-                            if (mats.includes(material) && !child.geometry.attributes.uv2) {
-                                child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
-                                log(`  ℹ UV2 copié depuis UV pour Occlusion sur "${child.name}"`);
-                            }
-                        }
-                    });
-                }
-                log(`  ✓ Occlusion appliqué`);
-            }
+            // Gérer les UV2 pour l'AO map si nécessaire
+            setupUV2ForAO(material, textures);
             
             material.needsUpdate = true;
             log(`✓ Matériau ${part} mis à jour`);
@@ -482,6 +469,233 @@ function loadTextures(part, colorIndex) {
             log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
         }
     });
+}
+
+// ================================================================================
+// FONCTIONS DE GESTION DES MATÉRIAUX ET MODES D'ÉCLAIRAGE
+// ================================================================================
+
+/**
+ * Crée un MeshBasicMaterial à partir d'un matériau existant
+ * Conserve les propriétés de base (nom, transparence, couleur)
+ * @param {THREE.Material} existingMaterial - Le matériau existant à convertir
+ * @returns {THREE.MeshBasicMaterial} - Le nouveau matériau basique
+ */
+function createBasicMaterialFromExisting(existingMaterial) {
+    const basicMat = new THREE.MeshBasicMaterial({
+        name: existingMaterial.name,
+        color: existingMaterial.color ? existingMaterial.color.clone() : new THREE.Color(0xffffff),
+        transparent: existingMaterial.transparent || false,
+        opacity: existingMaterial.opacity !== undefined ? existingMaterial.opacity : 1.0,
+        side: existingMaterial.side !== undefined ? existingMaterial.side : THREE.FrontSide,
+        alphaTest: existingMaterial.alphaTest || 0,
+        depthWrite: existingMaterial.depthWrite !== undefined ? existingMaterial.depthWrite : true,
+        depthTest: existingMaterial.depthTest !== undefined ? existingMaterial.depthTest : true
+    });
+    
+    // Copier les textures existantes si présentes
+    if (existingMaterial.map) {
+        basicMat.map = existingMaterial.map;
+    }
+    if (existingMaterial.alphaMap) {
+        basicMat.alphaMap = existingMaterial.alphaMap;
+    }
+    if (existingMaterial.aoMap) {
+        basicMat.aoMap = existingMaterial.aoMap;
+    }
+    
+    return basicMat;
+}
+
+/**
+ * Applique le mode d'éclairage (Unlit ou Lit) au matériau avec les textures fournies
+ * Met à jour également les paramètres du renderer (tone mapping, exposition)
+ * @param {THREE.Material} material - Le matériau Three.js à modifier
+ * @param {Object} textures - Objet contenant les textures chargées (albedo, alpha, emission, etc.)
+ */
+function applyMaterialMode(material, textures) {
+    if (unlitMode) {
+        // Appliquer les paramètres de rendu Unlit
+        renderer.toneMapping = toneMappingUnlit;
+        renderer.toneMappingExposure = toneMappingExposureUnlit;
+        log(`  ℹ Renderer: toneMapping=${getToneMappingName(toneMappingUnlit)}, exposure=${toneMappingExposureUnlit}`);
+        applyUnlitMode(material, textures);
+    } else {
+        // Appliquer les paramètres de rendu Lit
+        renderer.toneMapping = toneMappingLit;
+        renderer.toneMappingExposure = toneMappingExposureLit;
+        log(`  ℹ Renderer: toneMapping=${getToneMappingName(toneMappingLit)}, exposure=${toneMappingExposureLit}`);
+        applyLitMode(material, textures);
+    }
+}
+
+/**
+ * Retourne le nom lisible du type de tone mapping
+ * @param {number} toneMappingType - Le type de tone mapping Three.js
+ * @returns {string} - Le nom du tone mapping
+ */
+function getToneMappingName(toneMappingType) {
+    switch(toneMappingType) {
+        case THREE.NoToneMapping: return 'NoToneMapping';
+        case THREE.LinearToneMapping: return 'LinearToneMapping';
+        case THREE.ReinhardToneMapping: return 'ReinhardToneMapping';
+        case THREE.CinematicToneMapping: return 'CinematicToneMapping';
+        case THREE.ACESFilmicToneMapping: return 'ACESFilmicToneMapping';
+        case THREE.CustomToneMapping: return 'CustomToneMapping';
+        default: return 'Unknown';
+    }
+}
+
+/**
+ * Mode Unlit - Affiche les textures bakées sans éclairage temps réel
+ * Utilise emissiveMap (si MeshStandardMaterial) ou map (si MeshBasicMaterial)
+ */
+function applyUnlitMode(material, textures) {
+    log(`  → Application mode Unlit`);
+    
+    const isMeshBasic = material.type === 'MeshBasicMaterial';
+    
+    if (isMeshBasic) {
+        // MeshBasicMaterial - Utiliser directement la map (pas besoin d'emissive)
+        log(`  ℹ MeshBasicMaterial détecté - utilisation de map directe`);
+        
+        if (textures.albedo) {
+            material.map = textures.albedo;
+            // Le colorSpace est déjà défini lors du chargement de la texture
+            log(`  ✓ Albedo appliqué sur map (MeshBasicMaterial)`);
+        }
+    } else {
+        // MeshStandardMaterial ou autre - Utiliser emissive
+        log(`  ℹ ${material.type} détecté - utilisation d'emissiveMap`);
+        
+        // Réinitialiser les propriétés d'éclairage PBR
+        material.map = null;
+        if (material.metalnessMap !== undefined) material.metalnessMap = null;
+        if (material.roughnessMap !== undefined) material.roughnessMap = null;
+        if (material.normalMap !== undefined) material.normalMap = null;
+        if (material.metalness !== undefined) material.metalness = 0;
+        if (material.roughness !== undefined) material.roughness = 1;
+        
+        // Utiliser emissive pour afficher les textures bakées
+        if (textures.albedo) {
+            material.emissiveMap = textures.albedo;
+            material.emissive = new THREE.Color(emissiveColor);
+            material.emissiveIntensity = emissiveIntensity;
+            // Le colorSpace est déjà défini lors du chargement de la texture
+            log(`  ✓ Albedo appliqué en émissif (Unlit) - couleur: 0x${emissiveColor.toString(16)}, intensité: ${emissiveIntensity}`);
+        }
+    }
+    
+    // Alpha (transparence) - fonctionne en mode Unlit
+    if (textures.alpha) {
+        material.alphaMap = textures.alpha;
+        material.transparent = true;
+        log(`  ✓ Alpha appliqué`);
+    }
+    
+    // Emission supplémentaire (si texture d'émission séparée)
+    if (textures.emission) {
+        log(`  ℹ Emission ignorée en mode Unlit (albedo utilisé comme émissif)`);
+    }
+    
+    // Occlusion - peut être combiné avec emissive en mode multiply
+    if (textures.occlusion) {
+        material.aoMap = textures.occlusion;
+        material.aoMapIntensity = 1.0;
+        log(`  ✓ Occlusion appliqué (multiply avec émissif)`);
+    }
+    
+    // Textures ignorées en mode Unlit
+    if (textures.height) {
+        log(`  ⊘ Height ignoré en mode Unlit`);
+    }
+    if (textures.metallic) {
+        log(`  ⊘ Metallic ignoré en mode Unlit`);
+    }
+    if (textures.normalGL) {
+        log(`  ⊘ NormalGL ignoré en mode Unlit`);
+    }
+}
+
+/**
+ * Mode Lit - Utilise l'éclairage temps réel avec PBR (Physically Based Rendering)
+ * Applique toutes les textures pour un rendu réaliste avec lumières dynamiques
+ */
+function applyLitMode(material, textures) {
+    log(`  → Application mode Lit (PBR)`);
+    
+    // Réinitialiser l'émissif
+    material.emissiveMap = null;
+    material.emissive = new THREE.Color(0x000000);
+    material.emissiveIntensity = 0;
+    
+    // Albedo (couleur de base)
+    if (textures.albedo) {
+        material.map = textures.albedo;
+        // Le colorSpace est déjà défini lors du chargement de la texture
+        log(`  ✓ Albedo appliqué`);
+    }
+    
+    // Alpha (transparence)
+    if (textures.alpha) {
+        material.alphaMap = textures.alpha;
+        material.transparent = true;
+        log(`  ✓ Alpha appliqué`);
+    }
+    
+    // Emission (zones autoluminescentes)
+    if (textures.emission) {
+        material.emissiveMap = textures.emission;
+        material.emissive = new THREE.Color(0xffffff);
+        material.emissiveIntensity = 1.0;
+        log(`  ✓ Emission appliqué`);
+    }
+    
+    // Height/Displacement (relief géométrique)
+    if (textures.height) {
+        material.displacementMap = textures.height;
+        material.displacementScale = 0.1;
+        log(`  ✓ Height/Displacement appliqué`);
+    }
+    
+    // Metallic (métalité)
+    if (textures.metallic) {
+        material.metalnessMap = textures.metallic;
+        material.metalness = 1.0;
+        log(`  ✓ Metallic appliqué`);
+    }
+    
+    // NormalGL (détails de surface)
+    if (textures.normalGL) {
+        material.normalMap = textures.normalGL;
+        material.normalScale = new THREE.Vector2(1, 1);
+        log(`  ✓ NormalGL appliqué`);
+    }
+    
+    // Occlusion (ombres ambiantes)
+    if (textures.occlusion) {
+        material.aoMap = textures.occlusion;
+        material.aoMapIntensity = 1.0;
+        log(`  ✓ Occlusion appliqué`);
+    }
+}
+
+/**
+ * Configure les UV2 pour les AO maps si nécessaire
+ * Les AO maps nécessitent un canal UV2, on copie UV vers UV2 si absent
+ */
+function setupUV2ForAO(material, textures) {
+    if (textures.occlusion && uvSettings.autoGenerateUV2) {
+        model.traverse((child) => {
+            if (child.isMesh) {
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                if (mats.includes(material) && !child.geometry.attributes.uv2) {
+                    child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
+                    log(`  ℹ UV2 copié depuis UV pour Occlusion sur "${child.name}"`);
+                }
+            }
+        });
+    }
 }
 
 // Fonction pour générer les boutons de couleur dynamiquement
