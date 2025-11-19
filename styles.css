@@ -51,6 +51,26 @@ button:hover {
     width: 100px;
 }
 
+#environment-selector {
+    margin: 0 10px;
+    padding: 10px;
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+#environment-selector:hover {
+    background: #555;
+}
+
+#environment-selector option {
+    background: #333;
+    color: white;
+}
+
 #log-panel {
     position: absolute;
     bottom: 0;

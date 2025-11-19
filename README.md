@@ -144,6 +144,12 @@ toneMappingExposureLit = 1.0;  // Ajuster selon l'éclairage
 ### Gestion de l'environnement
 Le système permet de configurer l'environnement de la scène de manière différente selon le mode d'éclairage.
 
+#### Configuration automatique au démarrage
+Au chargement du modèle 3D, si `unlitMode = false`, le système charge automatiquement l'environment map par défaut :
+- **Fichier** : `Textures/environement/Default_Lit.hdr`
+- **Paramètres utilisés** : `envMapIntensity` et `envMapRotation` définis dans les variables
+- Si le fichier n'est pas trouvé, un avertissement est affiché et la couleur de fond est utilisée
+
 #### Mode Lit (éclairage dynamique)
 Utilise des **environment maps** pour les réflections et l'éclairage indirect :
 
@@ -151,21 +157,43 @@ Utilise des **environment maps** pour les réflections et l'éclairage indirect 
 ```javascript
 // Activer l'environment map
 useEnvironmentMap = true;
-environmentMapPath = 'environment.jpg';  // Chemin vers image équirectangulaire
+environmentMapPath = 'Textures/environement/Default_Lit.hdr';  // Chemin vers l'env map
 envMapIntensity = 1.0;  // Intensité des réflections (0.0 à 2.0+)
 envMapRotation = 0;  // Rotation en radians (0 à Math.PI * 2)
 ```
 
 **Variables disponibles :**
 - `useEnvironmentMap` : Active/désactive l'environment map
-- `environmentMapPath` : Chemin vers une image équirectangulaire (JPG/PNG) ou null pour couleur unie
+- `environmentMapPath` : Chemin vers une image équirectangulaire (JPG/PNG/HDR/EXR) ou null pour couleur unie
 - `envMapIntensity` : Intensité des réflections sur les matériaux (0.0 = pas de réflection, 1.0 = normal, 2.0 = réflections intenses)
 - `envMapRotation` : Rotation de l'environment map en radians pour ajuster l'orientation de l'éclairage
 - `backgroundColor` : Couleur de fond si pas d'environment map
+- `envirfilename` : Tableau des noms de fichiers à scanner dans le dossier `Textures/environement/`
 
 **Formats supportés :**
-- Images équirectangulaires JPG/PNG (360°)
-- Pour HDR (.hdr), importer `RGBELoader` de Three.js
+- **JPG/PNG** : Images équirectangulaires 360° standard (LDR - colorSpace: SRGBColorSpace)
+- **HDR** : High Dynamic Range Radiance (via RGBELoader - colorSpace: LinearSRGBColorSpace)
+- **EXR** : OpenEXR format (via EXRLoader - colorSpace: LinearSRGBColorSpace)
+
+**Structure du dossier environement :**
+```
+Textures/
+  └─ environement/
+      ├─ Default_Lit.hdr       (chargé automatiquement en mode Lit)
+      ├─ Env_01_Lit.hdr
+      ├─ Env_01_UnLit.jpg
+      ├─ Env_02_Lit.exr
+      ├─ Env_02_UnLit.png
+      └─ ...
+```
+
+**Sélecteur d'environment maps :**
+- Au démarrage, le système scanne le dossier `Textures/environement/` pour détecter les fichiers disponibles
+- Les noms à rechercher sont définis dans la variable `envirfilename`
+- Un menu déroulant est généré automatiquement dans l'interface avec :
+  - Option "Aucun (couleur de fond)" pour désactiver l'environment map
+  - Liste de toutes les environment maps détectées avec leur format
+- La sélection change dynamiquement l'environnement via la fonction `changeEnvironment()`
 
 #### Mode Unlit (textures bakées)
 Utilise des **paramètres simplifiés** comme équivalents :
@@ -195,7 +223,7 @@ Utilisez la fonction `changeEnvironment()` pour modifier l'environnement en cour
 ```javascript
 await changeEnvironment({
     type: 'envmap',
-    envMapPath: 'studio_lighting.jpg',
+    envMapPath: 'Textures/environement/Env_01_Lit.hdr',
     intensity: 1.5,
     rotation: Math.PI / 4  // 45 degrés
 });

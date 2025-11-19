@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 
 // Variables de réglage exposées
 let cameraFov = 75;
@@ -20,9 +22,9 @@ let textureChannels = {
     alpha: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
     emission: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
     height: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
-    metallic: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
-    normalGL: { enabled: false, extensions: ['png', 'jpg'], flipY: false },
-    occlusion: { enabled: false, extensions: ['jpg', 'png'], flipY: false }
+    metallic: { enabled: true, extensions: ['jpg', 'png'], flipY: false },
+    normalGL: { enabled: true, extensions: ['png', 'jpg'], flipY: false },
+    occlusion: { enabled: true, extensions: ['jpg', 'png'], flipY: false }
 };
 
 // Configuration de la gestion des UVs
@@ -37,10 +39,10 @@ let normalHelperSize = 0.1;     // Taille des flèches de normales
 let normalHelperColor = 0x00ff00; // Couleur des flèches (vert par défaut)
 
 // Configuration du mode d'éclairage
-let unlitMode = true;  // true = Mode Unlit (pas d'éclairage temps réel, textures bakées), false = Mode lit (éclairage dynamique)
+let unlitMode = false;  // true = Mode Unlit (pas d'éclairage temps réel, textures bakées), false = Mode lit (éclairage dynamique)
 let emissiveColor = 0xffffff;  // Couleur émissive en mode Unlit (0xffffff = blanc, affichage fidèle)
 let emissiveIntensity = 1.0;  // Intensité émissive en mode Unlit (1.0 = 100%, 0.5 = 50%, etc.)
-let forceBasicMaterial = true;  // true = Remplacer les matériaux GLB par MeshBasicMaterial (optimal pour Unlit), false = Utiliser les matériaux existants
+let forceBasicMaterial = false;  // true = Remplacer les matériaux GLB par MeshBasicMaterial (optimal pour Unlit), false = Utiliser les matériaux existants
 
 // Configuration du Tone Mapping et Color Space
 // Tone Mapping - Options: NoToneMapping, LinearToneMapping, ReinhardToneMapping, CinematicToneMapping, ACESFilmicToneMapping
@@ -63,6 +65,7 @@ let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.
 // Mode Unlit : utilise ambientLightIntensity et backgroundColor comme équivalence
 let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
 let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
+let envirfilename = ['Default_Lit','Env_01_Lit', 'Env_01_UnLit', 'Env_02_Lit', 'Env_02_UnLit' ];
 
 // Fonction de logging
 function log(message, type = 'info') {
@@ -79,6 +82,10 @@ function log(message, type = 'info') {
 
 log('Initialisation de la visionneuse 3D...');
 
+// Variables pour les lumières (déclarées globalement avant leur utilisation)
+let ambientLight;
+let directionalLight;
+
 // Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, sans extension
 let modelExtension = null; // Extension détectée automatiquement (glb ou gltf)
@@ -86,6 +93,9 @@ let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configura
 // Codes de matériaux disponibles par partie (détectés automatiquement)
 let materialCodesPerPart = {};
 let currentColorIndex = {}; // Index dans le tableau de codes
+
+// Liste des environment maps disponibles (détectées automatiquement)
+let availableEnvironmentMaps = [];
 
 // Fonction pour scanner les dossiers de textures et extraire les codes matériaux
 async function scanMaterialCodes() {
@@ -144,6 +154,48 @@ async function scanMaterialCodes() {
     log('Scan des textures terminé');
 }
 
+// Fonction pour scanner le dossier environement et détecter les fichiers disponibles
+async function scanEnvironmentMaps() {
+    log('Scan des environment maps...');
+    const basePath = 'Textures/environement/';
+    const extensions = ['jpg', 'jpeg', 'png', 'hdr', 'exr'];
+    const foundMaps = [];
+    
+    // Liste de noms communs à tester (peut être étendue)
+    const commonNames =  envirfilename
+    
+    // Tester chaque combinaison nom + extension
+    for (const name of commonNames) {
+        for (const ext of extensions) {
+            const testPath = `${basePath}${name}.${ext}`;
+            try {
+                const response = await fetch(testPath, { method: 'HEAD' });
+                if (response.ok) {
+                    foundMaps.push({
+                        name: name,
+                        path: testPath,
+                        extension: ext,
+                        displayName: `${name} (.${ext})`
+                    });
+                    log(`✓ Environment map trouvée: ${name}.${ext}`);
+                }
+            } catch (e) {
+                // Fichier non trouvé, continuer
+            }
+        }
+    }
+    
+    availableEnvironmentMaps = foundMaps;
+    
+    if (foundMaps.length === 0) {
+        log('⚠ Aucune environment map trouvée dans Textures/environement/', 'warning');
+    } else {
+        log(`✓ ${foundMaps.length} environment map(s) détectée(s)`);
+    }
+    
+    return foundMaps;
+}
+
 // Initialisation Three.js
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(backgroundColor);
@@ -162,17 +214,17 @@ renderer.toneMappingExposure = unlitMode ? toneMappingExposureUnlit : toneMappin
 renderer.outputColorSpace = outputColorSpace;
 log(`Renderer configuré: toneMapping=${getToneMappingName(renderer.toneMapping)}, exposure=${renderer.toneMappingExposure}, outputColorSpace=${outputColorSpace}`);
 
-// Initialiser l'environnement
-initializeEnvironment();
-
-// Lumières
-const ambientLight = new THREE.AmbientLight(0xffffff, ambientLightIntensity);
+// Lumières (initialisation avant initializeEnvironment)
+ambientLight = new THREE.AmbientLight(0xffffff, ambientLightIntensity);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, lightIntensity);
+directionalLight = new THREE.DirectionalLight(0xffffff, lightIntensity);
 directionalLight.position.set(5, 5, 5);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
+
+// Initialiser l'environnement après les lumières
+initializeEnvironment();
 
 // Contrôles
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -207,8 +259,15 @@ async function detectModelExtension() {
     return 'glb';
 }
 
-// Détecter l'extension, scanner les textures, puis charger le modèle
-detectModelExtension().then(() => scanMaterialCodes()).then(() => {
+// Détecter l'extension, scanner les textures et environment maps, puis charger le modèle
+detectModelExtension()
+    .then(() => scanMaterialCodes())
+    .then(() => scanEnvironmentMaps())
+    .then(() => {
+        // Générer l'interface après avoir scanné les environment maps
+        generateEnvironmentSelector();
+    })
+    .then(() => {
     const modelFile = `${modelName}.${modelExtension}`;
     log(`Chargement du modèle: ${modelFile}`);
     const loader = new GLTFLoader();
@@ -358,6 +417,22 @@ detectModelExtension().then(() => scanMaterialCodes()).then(() => {
     camera.lookAt(center);
     log('Caméra centrée sur le modèle');
     log('Chargement terminé avec succès');
+    
+    // Charger l'environment map par défaut si en mode Lit
+    if (!unlitMode) {
+        const defaultEnvMapPath = 'Textures/environement/Default_Lit.hdr';
+        log('Chargement de l\'environment map par défaut: Default_Lit.hdr');
+        changeEnvironment({
+            type: 'envmap',
+            envMapPath: defaultEnvMapPath,
+            intensity: envMapIntensity,
+            rotation: envMapRotation
+        }).then(() => {
+            log('✓ Environment map par défaut appliquée');
+        }).catch((error) => {
+            log(`⚠ Impossible de charger l'environment map par défaut: ${error.message}`, 'warning');
+        });
+    }
     
     // Générer les boutons de couleur dynamiquement (après le chargement)
     generateColorButtons();
@@ -565,27 +640,70 @@ async function applyLitEnvironment() {
 
 /**
  * Charge une environment map depuis un fichier HDR ou texture équirectangulaire
+ * Supporte: JPG, PNG, HDR (via RGBELoader), EXR (via EXRLoader)
  * @param {string} path - Chemin vers le fichier d'environment map
  * @returns {Promise<THREE.Texture>} - La texture d'environment map chargée
  */
 async function loadEnvironmentMap(path) {
     return new Promise((resolve, reject) => {
-        // Pour HDR, il faudrait RGBELoader
-        // Pour l'instant, on supporte les images standard (JPG/PNG) en équirectangulaire
-        const loader = new THREE.TextureLoader();
+        // Détecter l'extension du fichier
+        const extension = path.split('.').pop().toLowerCase();
+        let loader;
         
-        loader.load(
-            path,
-            (texture) => {
-                texture.mapping = THREE.EquirectangularReflectionMapping;
-                texture.colorSpace = THREE.SRGBColorSpace;
-                resolve(texture);
-            },
-            undefined,
-            (error) => {
-                reject(error);
-            }
-        );
+        if (extension === 'hdr') {
+            // RGBELoader pour fichiers HDR
+            loader = new RGBELoader();
+            loader.load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.colorSpace = THREE.LinearSRGBColorSpace; // HDR en linear
+                    log('✓ Environment map HDR chargée');
+                    resolve(texture);
+                },
+                undefined,
+                (error) => {
+                    reject(error);
+                }
+            );
+            
+        } else if (extension === 'exr') {
+            // EXRLoader pour fichiers EXR
+            loader = new EXRLoader();
+            loader.load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.colorSpace = THREE.LinearSRGBColorSpace; // EXR en linear
+                    log('✓ Environment map EXR chargée');
+                    resolve(texture);
+                },
+                undefined,
+                (error) => {
+                    reject(error);
+                }
+            );
+            
+        } else if (extension === 'jpg' || extension === 'jpeg' || extension === 'png') {
+            // TextureLoader pour JPG/PNG (LDR)
+            loader = new THREE.TextureLoader();
+            loader.load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.colorSpace = THREE.SRGBColorSpace; // LDR en sRGB
+                    log('✓ Environment map LDR chargée');
+                    resolve(texture);
+                },
+                undefined,
+                (error) => {
+                    reject(error);
+                }
+            );
+            
+        } else {
+            reject(new Error(`Format non supporté: ${extension}`));
+        }
     });
 }
 
@@ -903,6 +1021,58 @@ function generateColorButtons() {
             log(`✗ Pas de codes matériaux pour ${part}`, 'warning');
         }
     });
+}
+
+// Fonction pour générer le sélecteur d'environment maps
+function generateEnvironmentSelector() {
+    const selector = document.getElementById('environment-selector');
+    if (!selector) {
+        log('✗ Élément environment-selector introuvable dans le DOM', 'error');
+        return;
+    }
+    
+    // Vider les options existantes
+    selector.innerHTML = '';
+    
+    // Option "Aucun" pour désactiver l'environment map
+    const noneOption = document.createElement('option');
+    noneOption.value = 'none';
+    noneOption.textContent = 'Aucun (couleur de fond)';
+    selector.appendChild(noneOption);
+    
+    // Ajouter les environment maps disponibles
+    availableEnvironmentMaps.forEach((envMap, index) => {
+        const option = document.createElement('option');
+        option.value = envMap.path;
+        option.textContent = envMap.displayName;
+        selector.appendChild(option);
+    });
+    
+    // Événement de changement
+    selector.addEventListener('change', async (e) => {
+        const selectedPath = e.target.value;
+        
+        if (selectedPath === 'none') {
+            // Désactiver l'environment map, utiliser couleur de fond
+            log('Désactivation de l\'environment map');
+            await changeEnvironment({
+                type: 'color',
+                color: backgroundColorUnlit,
+                intensity: ambientLightIntensityUnlit
+            });
+        } else {
+            // Charger l'environment map sélectionnée
+            log(`Changement d'environment map: ${selectedPath}`);
+            await changeEnvironment({
+                type: 'envmap',
+                envMapPath: selectedPath,
+                intensity: envMapIntensity,
+                rotation: envMapRotation
+            });
+        }
+    });
+    
+    log(`✓ Sélecteur d'environment créé avec ${availableEnvironmentMaps.length} option(s)`);
 }
 
 // Boutons UI
