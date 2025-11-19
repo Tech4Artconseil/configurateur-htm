@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 
 // Variables de réglage exposées
 let cameraFov = 75;
@@ -11,6 +12,28 @@ let lightIntensity = 1;
 let ambientLightIntensity = 0.5;
 let autoRotateSpeed = 0.5;
 let backgroundColor = 0xffffff;
+
+// Configuration des canaux de textures à charger (true = actif, false = désactivé)
+let textureChannels = {
+    albedo: { enabled: true, extensions: ['jpg', 'png'] },
+    alpha: { enabled: false, extensions: ['jpg', 'png'] },
+    emission: { enabled: false, extensions: ['jpg', 'png'] },
+    height: { enabled: false, extensions: ['jpg', 'png'] },
+    metallic: { enabled: false, extensions: ['jpg', 'png'] },
+    normalGL: { enabled: false, extensions: ['png', 'jpg'] },
+    occlusion: { enabled: false, extensions: ['jpg', 'png'] }
+};
+
+// Configuration de la gestion des UVs
+let uvSettings = {
+    autoGenerateUV: false,  // Générer automatiquement les UVs si absents
+    autoGenerateUV2: true   // Copier UV vers UV2 si nécessaire pour les AO maps
+};
+
+// Configuration de l'affichage des normales (debug)
+let showNormals = false;        // Afficher les normales sous forme de flèches
+let normalHelperSize = 0.1;     // Taille des flèches de normales
+let normalHelperColor = 0x00ff00; // Couleur des flèches (vert par défaut)
 
 // Fonction de logging
 function log(message, type = 'info') {
@@ -200,6 +223,18 @@ scanMaterialCodes().then(() => {
     allMaterials.forEach((info, uuid) => {
         log(`  • "${info.name}" (${info.type})`);
     });
+    
+    // Afficher les normales si activé
+    if (showNormals) {
+        log('=== AFFICHAGE DES NORMALES ACTIVÉ ===');
+        model.traverse((child) => {
+            if (child.isMesh) {
+                const helper = new VertexNormalsHelper(child, normalHelperSize, normalHelperColor);
+                scene.add(helper);
+                log(`✓ Helper normales ajouté pour mesh: "${child.name}"`);
+            }
+        });
+    }
 
     // Trouver les matériaux pour chaque partie configurée
     log('=== CORRESPONDANCE AVEC PARTIES CONFIGURABLES ===');
@@ -300,78 +335,121 @@ function loadTextures(part, colorIndex) {
         });
     }
 
-    // Charger toutes les textures de manière asynchrone
-    Promise.all([
-        loadTextureWithFallback('Albedo', ['png', 'jpg']),
-        loadTextureWithFallback('AO', ['png', 'jpg']),
-        loadTextureWithFallback('Normal', ['png', 'jpg']),
-        loadTextureWithFallback('Spec', ['png', 'jpg']),
-        loadTextureWithFallback('Alpha', ['png', 'jpg'])
-    ]).then(([albedo, ao, normal, specular, alpha]) => {
-        const textures = { albedo, ao, normal, specular, alpha };
+    // Charger uniquement les textures activées
+    const texturePromises = [];
+    const enabledChannels = [];
+    
+    Object.entries(textureChannels).forEach(([channel, config]) => {
+        if (config.enabled) {
+            // Capitaliser la première lettre pour le nom de fichier
+            const channelName = channel.charAt(0).toUpperCase() + channel.slice(1);
+            texturePromises.push(loadTextureWithFallback(channelName, config.extensions));
+            enabledChannels.push(channel);
+            log(`  → Chargement ${channel} activé`);
+        } else {
+            log(`  ⊘ Chargement ${channel} désactivé`, 'info');
+        }
+    });
+    
+    Promise.all(texturePromises).then((loadedTextures) => {
+        // Créer un objet avec les textures chargées
+        const textures = {};
+        enabledChannels.forEach((channel, index) => {
+            textures[channel] = loadedTextures[index];
+        });
 
         // Assigner aux matériaux
         const material = materials[part];
         if (material) {
             log(`Application des textures sur matériau: ${part}`);
             
-            // Vérifier si le mesh associé a des UVs
-            let hasUVs = false;
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    const mats = Array.isArray(child.material) ? child.material : [child.material];
-                    if (mats.includes(material)) {
-                        hasUVs = child.geometry.attributes.uv !== undefined;
-                        if (!hasUVs) {
-                            log(`⚠ Mesh "${child.name}" n'a pas d'UVs, génération automatique...`, 'warning');
-                            // Tentative de génération d'UVs basiques (box projection)
-                            if (!child.geometry.attributes.uv) {
-                                const uvArray = [];
-                                const posArray = child.geometry.attributes.position.array;
-                                for (let i = 0; i < posArray.length; i += 3) {
-                                    // Projection basique XY
-                                    uvArray.push((posArray[i] + 1) / 2, (posArray[i + 1] + 1) / 2);
-                                }
-                                child.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
-                                log(`✓ UVs générés automatiquement pour "${child.name}"`);
-                            }
-                        }
-                    }
-                }
-            });
-            
-            if (textures.albedo) {
-                material.map = textures.albedo;
-                material.map.encoding = THREE.sRGBEncoding; // Important pour les couleurs
-            }
-            if (textures.ao) {
-                material.aoMap = textures.ao;
-                material.aoMapIntensity = 1.0; // Ajustable
-                // AO map nécessite UV2, on utilise UV si UV2 n'existe pas
+            // Vérifier et générer les UVs si nécessaire
+            if (uvSettings.autoGenerateUV) {
+                let hasUVs = false;
                 model.traverse((child) => {
                     if (child.isMesh) {
                         const mats = Array.isArray(child.material) ? child.material : [child.material];
-                        if (mats.includes(material) && !child.geometry.attributes.uv2) {
-                            child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
-                            log(`ℹ UV2 copié depuis UV pour AO map sur "${child.name}"`);
+                        if (mats.includes(material)) {
+                            hasUVs = child.geometry.attributes.uv !== undefined;
+                            if (!hasUVs) {
+                                log(`⚠ Mesh "${child.name}" n'a pas d'UVs, génération automatique...`, 'warning');
+                                // Tentative de génération d'UVs basiques (box projection)
+                                if (!child.geometry.attributes.uv) {
+                                    const uvArray = [];
+                                    const posArray = child.geometry.attributes.position.array;
+                                    for (let i = 0; i < posArray.length; i += 3) {
+                                        // Projection basique XY
+                                        uvArray.push((posArray[i] + 1) / 2, (posArray[i + 1] + 1) / 2);
+                                    }
+                                    child.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
+                                    log(`✓ UVs générés automatiquement pour "${child.name}"`);
+                                }
+                            }
                         }
                     }
                 });
             }
-            if (textures.normal) {
-                material.normalMap = textures.normal;
+            
+            // Albedo (couleur de base)
+            if (textures.albedo) {
+                material.map = textures.albedo;
+                material.map.encoding = THREE.sRGBEncoding; // Important pour les couleurs
+                log(`  ✓ Albedo appliqué`);
             }
-            if (textures.specular) {
-                // Pour MeshStandardMaterial, utiliser roughnessMap ou metalnessMap
-                if (material.type === 'MeshStandardMaterial' || material.type === 'MeshPhysicalMaterial') {
-                    material.roughnessMap = textures.specular;
-                } else {
-                    material.specularMap = textures.specular;
-                }
-            }
+            
+            // Alpha (transparence)
             if (textures.alpha) {
                 material.alphaMap = textures.alpha;
                 material.transparent = true;
+                log(`  ✓ Alpha appliqué`);
+            }
+            
+            // Emission (émission de lumière)
+            if (textures.emission) {
+                material.emissiveMap = textures.emission;
+                material.emissive = new THREE.Color(0xffffff);
+                material.emissiveIntensity = 1.0; // Ajustable
+                log(`  ✓ Emission appliqué`);
+            }
+            
+            // Height/Displacement (relief)
+            if (textures.height) {
+                material.displacementMap = textures.height;
+                material.displacementScale = 0.1; // Ajustable selon vos besoins
+                log(`  ✓ Height/Displacement appliqué`);
+            }
+            
+            // Metallic (métallic)
+            if (textures.metallic) {
+                material.metalnessMap = textures.metallic;
+                material.metalness = 1.0; // Ajustable
+                log(`  ✓ Metallic appliqué`);
+            }
+            
+            // NormalGL (normal map)
+            if (textures.normalGL) {
+                material.normalMap = textures.normalGL;
+                material.normalScale = new THREE.Vector2(1, 1); // Ajustable
+                log(`  ✓ NormalGL appliqué`);
+            }
+            
+            // Occlusion (ambient occlusion)
+            if (textures.occlusion) {
+                material.aoMap = textures.occlusion;
+                material.aoMapIntensity = 1.0; // Ajustable
+                // AO map nécessite UV2, on utilise UV si UV2 n'existe pas
+                if (uvSettings.autoGenerateUV2) {
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            const mats = Array.isArray(child.material) ? child.material : [child.material];
+                            if (mats.includes(material) && !child.geometry.attributes.uv2) {
+                                child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
+                                log(`  ℹ UV2 copié depuis UV pour Occlusion sur "${child.name}"`);
+                            }
+                        }
+                    });
+                }
+                log(`  ✓ Occlusion appliqué`);
             }
             
             material.needsUpdate = true;
