@@ -123,6 +123,97 @@ button:hover {
     color: #000;
 }
 
+/* Color dropdown (circular swatches, no text in toggle) */
+.color-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.color-dropdown-toggle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.6);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.color-dropdown-toggle .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center center;
+}
+.color-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 10003;
+}
+.color-dropdown.open .color-dropdown-menu { display: flex; }
+.color-swatch-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.6);
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.color-swatch-btn .swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center center;
+}
+
+/* Environment dropdown (visual list of thumbnails) */
+.env-dropdown { display: inline-block; position: relative; }
+.env-dropdown-toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.6);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+}
+.env-dropdown-toggle img { width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
+.env-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: rgba(8,8,8,0.88);
+    border: 1px solid rgba(255,255,255,0.04);
+    padding: 8px;
+    display: none;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    z-index: 3000;
+    width: 320px;
+    border-radius: 10px;
+}
+.env-dropdown.open .env-dropdown-menu { display: block; }
+.env-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 8px; cursor: pointer; }
+.env-item:hover { background: rgba(255,255,255,0.02); }
+.env-item img { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; }
+.env-item .env-label { color: #ddd; font-size: 11px; }
+
 /* make select look like a rounded button (black text, transparent background) */
 #environment-selector {
     margin: 0 6px;

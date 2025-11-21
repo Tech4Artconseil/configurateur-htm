@@ -267,12 +267,21 @@ async function scanEnvironmentMaps() {
             try {
                 const response = await fetch(testPath, { method: 'HEAD' });
                 if (response.ok) {
-                    foundMaps.push({
+                    const mapEntry = {
                         name: name,
                         path: testPath,
                         extension: ext,
-                        displayName: `${name} (.${ext})`
-                    });
+                        displayName: `${name} (.${ext})`,
+                        thumb: null
+                    };
+                    // tenter de détecter une vignette côté serveur (basename + _thumb.png/jpg/webp)
+                    try {
+                        const thumb = await findEnvThumbnail(basePath, name);
+                        if (thumb) mapEntry.thumb = thumb;
+                    } catch (e) {
+                        // ignore
+                    }
+                    foundMaps.push(mapEntry);
                     log(`✓ Environment map trouvée: ${name}.${ext}`);
                 }
             } catch (e) {
@@ -290,6 +299,26 @@ async function scanEnvironmentMaps() {
     }
     
     return foundMaps;
+}
+
+// Helper: vérifie si une image existe (load via Image)
+function checkImageExists(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+    });
+}
+
+// Cherche une vignette d'environment : basename + '_thumb' + ext
+async function findEnvThumbnail(basePath, baseName) {
+    const exts = ['png', 'jpg', 'webp'];
+    for (const ext of exts) {
+        const p = `${basePath}${baseName}_thumb.${ext}`;
+        if (await checkImageExists(p)) return p;
+    }
+    return null;
 }
 
 // Initialisation Three.js
@@ -660,6 +689,29 @@ function loadTextures(part, colorIndex) {
             // Sauvegarder temporairement pour le toggle
             window._lastLoadedTextures = textures;
             updateTexturePreviewPanel(textures);
+            // essayer de trouver un swatch serveur : Color_<code>_Swatch.png|jpg|webp
+            (async () => {
+                try {
+                    const materialCode = materialCodesPerPart[part][colorIndex];
+                    const swatch = await findSwatchForMaterial(basePath, materialCode);
+                    if (swatch) {
+                        const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
+                        if (btn) {
+                            const sw = btn.querySelector('.swatch');
+                            if (sw) {
+                                sw.style.backgroundImage = `url('${swatch}')`;
+                                sw.style.backgroundColor = 'transparent';
+                                sw.textContent = '';
+                            }
+                        }
+                    } else {
+                        // si pas de swatch serveur, utiliser la texture albedo si elle existe
+                        updateColorButtonSwatch(part, textures);
+                    }
+                } catch (e) {
+                    updateColorButtonSwatch(part, textures);
+                }
+            })();
         } else {
             log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
         }
@@ -1195,47 +1247,142 @@ function frameModel(model, options = {}) {
 // Fonction pour générer les boutons de couleur dynamiquement
 function generateColorButtons() {
     const colorButtonsDiv = document.getElementById('color-buttons');
-    colorButtonsDiv.innerHTML = ''; // Vider les boutons existants
-    
+    colorButtonsDiv.innerHTML = '';
+
     productParts.forEach(part => {
-        if (materialCodesPerPart[part] && materialCodesPerPart[part].length > 0) {
-            const btn = document.createElement('button');
-            btn.id = `${part.toLowerCase()}-color-btn`;
-            btn.className = 'color-btn';
+        const codes = materialCodesPerPart[part] || [];
+        const container = document.createElement('div');
+        container.className = 'color-dropdown';
+        container.id = `${part.toLowerCase()}-color-dropdown`;
 
-            // swatch (round thumbnail)
-            const sw = document.createElement('div');
-            sw.className = 'swatch';
-            sw.dataset.part = part;
-            btn.appendChild(sw);
+        // Toggle (shows current selection swatch only)
+        const toggle = document.createElement('button');
+        toggle.className = 'color-dropdown-toggle';
+        toggle.type = 'button';
+        toggle.title = part;
+        const toggleSw = document.createElement('div');
+        toggleSw.className = 'swatch';
+        toggle.appendChild(toggleSw);
+        container.appendChild(toggle);
 
-            // label with part name and count
-            const lbl = document.createElement('span');
-            lbl.className = 'label';
-            lbl.textContent = `${part} (${materialCodesPerPart[part].length})`;
-            btn.appendChild(lbl);
+        // Menu
+        const menu = document.createElement('div');
+        menu.className = 'color-dropdown-menu';
 
-            btn.addEventListener('click', () => {
-                currentColorIndex[part] = (currentColorIndex[part] + 1) % materialCodesPerPart[part].length;
-                const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
-                log(`Changement ${part}: ${materialCode}`);
-                loadTextures(part, currentColorIndex[part]);
-            });
-
-            colorButtonsDiv.appendChild(btn);
-            log(`✓ Bouton créé pour ${part} avec ${materialCodesPerPart[part].length} options`);
+        // Create swatch items
+        if (codes.length === 0) {
+            const none = document.createElement('div');
+            none.textContent = 'Aucune option';
+            none.style.fontSize = '10px';
+            none.style.color = '#333';
+            menu.appendChild(none);
         } else {
-            log(`✗ Pas de codes matériaux pour ${part}`, 'warning');
+            codes.forEach((code, idx) => {
+                const item = document.createElement('button');
+                item.className = 'color-swatch-btn';
+                item.type = 'button';
+                item.dataset.index = idx;
+                item.title = code;
+
+                const s = document.createElement('div');
+                s.className = 'swatch';
+
+                // placeholder green with index if no thumb will be applied later
+                s.style.background = '#9ae69a';
+                s.textContent = String(idx + 1);
+                s.style.fontSize = '10px';
+                s.style.color = '#000';
+                s.style.display = 'flex';
+                s.style.alignItems = 'center';
+                s.style.justifyContent = 'center';
+
+                item.appendChild(s);
+
+                item.addEventListener('click', () => {
+                    currentColorIndex[part] = idx;
+                    const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
+                    log(`Changement ${part}: ${materialCode}`);
+                    loadTextures(part, currentColorIndex[part]);
+                    // close
+                    container.classList.remove('open');
+                    // update toggle swatch immediately if server swatch exists
+                    updateToggleSwatch(part, idx);
+                });
+
+                menu.appendChild(item);
+            });
         }
+
+        container.appendChild(menu);
+
+        // toggle behavior
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // close other dropdowns
+            document.querySelectorAll('.color-dropdown.open').forEach(el => {
+                if (el !== container) el.classList.remove('open');
+            });
+            container.classList.toggle('open');
+        });
+
+        // close when clicking outside
+        document.addEventListener('click', (ev) => {
+            if (!container.contains(ev.target)) container.classList.remove('open');
+        });
+
+        colorButtonsDiv.appendChild(container);
+
+        // initialise toggle swatch (try server swatch or fallback)
+        (async () => {
+            if (codes.length > 0) {
+                const idx = currentColorIndex[part] || 0;
+                const basePath = `Textures/${modelName}/${part}/`;
+                const materialCode = codes[idx];
+                const swatch = await findSwatchForMaterial(basePath, materialCode);
+                if (swatch) {
+                    toggleSw.style.backgroundImage = `url('${swatch}')`;
+                    toggleSw.style.backgroundColor = 'transparent';
+                    toggleSw.textContent = '';
+                } else {
+                    // will be updated when textures load
+                    toggleSw.style.background = '#9ae69a';
+                    toggleSw.textContent = String(idx + 1);
+                }
+            }
+        })();
+
+        log(`✓ Dropdown créé pour ${part} avec ${codes.length} options`);
     });
+}
+
+// Update the toggle swatch for a part/index (called after selection or when swatch becomes available)
+async function updateToggleSwatch(part, idx) {
+    try {
+        const container = document.getElementById(`${part.toLowerCase()}-color-dropdown`);
+        if (!container) return;
+        const toggleSw = container.querySelector('.color-dropdown-toggle .swatch');
+        const basePath = `Textures/${modelName}/${part}/`;
+        const materialCode = materialCodesPerPart[part][idx];
+        const swatch = await findSwatchForMaterial(basePath, materialCode);
+        if (swatch) {
+            toggleSw.style.backgroundImage = `url('${swatch}')`;
+            toggleSw.style.backgroundColor = 'transparent';
+            toggleSw.textContent = '';
+        } else {
+            // try to use existing loaded textures preview
+            const currentTextures = window._lastLoadedTextures || {};
+            updateColorButtonSwatch(part, currentTextures);
+        }
+    } catch (e) { /* ignore */ }
 }
 
 // Met à jour la swatch du bouton couleur pour une partie donnée avec la texture albedo si disponible
 function updateColorButtonSwatch(part, textures) {
     try {
-        const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
-        if (!btn) return;
-        const sw = btn.querySelector('.swatch');
+        // Trouver le container dropdown et la swatch du toggle
+        const container = document.getElementById(`${part.toLowerCase()}-color-dropdown`);
+        if (!container) return;
+        const sw = container.querySelector('.color-dropdown-toggle .swatch');
         if (!sw) return;
 
         // chercher une source pour la texture albedo
@@ -1248,23 +1395,33 @@ function updateColorButtonSwatch(part, textures) {
 
         if (src) {
             sw.style.backgroundImage = `url('${src}')`;
+            sw.style.background = 'transparent';
+            sw.textContent = '';
         } else {
-            // fallback: afficher le code texte (dernier materialCode)
-            const codes = materialCodesPerPart[part];
+            // fallback: afficher le numéro sélectionné (1-based) si aucun swatch/image
             const idx = currentColorIndex[part] || 0;
-            const code = (codes && codes[idx]) ? codes[idx] : '';
             sw.style.backgroundImage = '';
             sw.style.background = '#ddd';
-            sw.textContent = code ? code.slice(0,2) : '';
+            sw.textContent = String(idx + 1);
             sw.style.display = 'flex';
             sw.style.alignItems = 'center';
             sw.style.justifyContent = 'center';
-            sw.style.fontSize = '8px';
+            sw.style.fontSize = '10px';
             sw.style.color = '#000';
         }
     } catch (e) {
         // ignore
     }
+}
+
+// Cherche un swatch côté serveur pour un materialCode donné (Color_<code>_Swatch.ext)
+async function findSwatchForMaterial(basePath, materialCode) {
+    const exts = ['png', 'jpg', 'webp'];
+    const candidates = exts.map(ext => `${basePath}Color_${materialCode}_Swatch.${ext}`);
+    for (const c of candidates) {
+        if (await checkImageExists(c)) return c;
+    }
+    return null;
 }
 
 // Fonction pour générer le sélecteur d'environment maps
@@ -1274,48 +1431,83 @@ function generateEnvironmentSelector() {
         log('✗ Élément environment-selector introuvable dans le DOM', 'error');
         return;
     }
-    
-    // Vider les options existantes
-    selector.innerHTML = '';
-    
-    // Option "Aucun" pour désactiver l'environment map
-    const noneOption = document.createElement('option');
-    noneOption.value = 'none';
-    noneOption.textContent = 'Aucun (couleur de fond)';
-    selector.appendChild(noneOption);
-    
-    // Ajouter les environment maps disponibles
-    availableEnvironmentMaps.forEach((envMap, index) => {
-        const option = document.createElement('option');
-        option.value = envMap.path;
-        option.textContent = envMap.displayName;
-        selector.appendChild(option);
+
+    // Replace the native select with a visual dropdown of thumbnails
+    const parent = selector.parentElement || selector.parentNode;
+    // remove existing select element
+    selector.style.display = 'none';
+
+    // create env dropdown container
+    let container = document.getElementById('env-dropdown');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'env-dropdown';
+        container.className = 'env-dropdown';
+        parent.insertBefore(container, selector.nextSibling);
+    }
+
+    container.innerHTML = '';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'env-dropdown-toggle';
+    toggle.type = 'button';
+    const thumbImg = document.createElement('img');
+    thumbImg.alt = 'env-thumb';
+    toggle.appendChild(thumbImg);
+    container.appendChild(toggle);
+
+    const menu = document.createElement('div');
+    menu.className = 'env-dropdown-menu';
+
+    // add a 'none' item
+    const noneItem = document.createElement('div');
+    noneItem.className = 'env-item';
+    noneItem.innerHTML = `<div class="env-label">Aucun (couleur de fond)</div>`;
+    noneItem.addEventListener('click', async () => {
+        await changeEnvironment({ type: 'color', color: backgroundColorUnlit, intensity: ambientLightIntensityUnlit });
+        container.classList.remove('open');
+        thumbImg.style.display = 'none';
     });
-    
-    // Événement de changement
-    selector.addEventListener('change', async (e) => {
-        const selectedPath = e.target.value;
-        
-        if (selectedPath === 'none') {
-            // Désactiver l'environment map, utiliser couleur de fond
-            log('Désactivation de l\'environment map');
-            await changeEnvironment({
-                type: 'color',
-                color: backgroundColorUnlit,
-                intensity: ambientLightIntensityUnlit
-            });
-        } else {
-            // Charger l'environment map sélectionnée
-            log(`Changement d'environment map: ${selectedPath}`);
-            await changeEnvironment({
-                type: 'envmap',
-                envMapPath: selectedPath,
-                intensity: envMapIntensity,
-                rotation: envMapRotation
-            });
-        }
+    menu.appendChild(noneItem);
+
+    // add env map items
+    availableEnvironmentMaps.forEach((envMap) => {
+        const item = document.createElement('div');
+        item.className = 'env-item';
+
+        const img = document.createElement('img');
+        // prefer thumb if available
+        if (envMap.thumb) img.src = envMap.thumb; else img.src = envMap.path;
+        item.appendChild(img);
+
+        const tlabel = document.createElement('div');
+        tlabel.className = 'env-label';
+        tlabel.textContent = envMap.displayName;
+        item.appendChild(tlabel);
+
+        item.addEventListener('click', async () => {
+            log(`Changement d'environment map: ${envMap.path}`);
+            await changeEnvironment({ type: 'envmap', envMapPath: envMap.path, intensity: envMapIntensity, rotation: envMapRotation });
+            // update toggle thumb
+            thumbImg.src = envMap.thumb || envMap.path;
+            thumbImg.style.display = '';
+            container.classList.remove('open');
+        });
+
+        menu.appendChild(item);
     });
-    
+
+    container.appendChild(menu);
+
+    // toggle behavior
+    toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.env-dropdown.open').forEach(el => { if (el !== container) el.classList.remove('open'); });
+        container.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (ev) => { if (!container.contains(ev.target)) container.classList.remove('open'); });
+
     log(`✓ Sélecteur d'environment créé avec ${availableEnvironmentMaps.length} option(s)`);
 }
 
