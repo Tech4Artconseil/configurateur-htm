@@ -160,7 +160,7 @@ let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.
 // Mode Unlit : utilise ambientLightIntensity et backgroundColor comme équivalence
 let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
 let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
-let envirfilename = ['Default_Lit','Env_01_Lit', 'Env_01_UnLit', 'Env_02_Lit', 'Env_02_UnLit' ];
+let envirfilename = ['Default','Env_01', 'Env_02'];
 // Global defaults for circular label helpers (modifiable at runtime)
 const CIRCULAR_LABEL_DEFAULTS_ENV = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
 const CIRCULAR_LABEL_DEFAULTS_COLOR = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
@@ -348,7 +348,7 @@ function checkImageExists(url) {
 
 // Cherche une vignette d'environment : basename + '_thumb' + ext
 async function findEnvThumbnail(basePath, baseName) {
-    const exts = ['png', 'jpg', 'webp'];
+    const exts = ['jpg', 'png', 'webp'];
     for (const ext of exts) {
         const p = `${basePath}${baseName}_thumb.${ext}`;
         if (await checkImageExists(p)) return p;
@@ -610,7 +610,8 @@ detectModelExtension()
 // Fonction pour charger les textures
 function loadTextures(part, colorIndex) {
     const textureLoader = new THREE.TextureLoader();
-    const materialCode = materialCodesPerPart[part][colorIndex];
+    const rawMaterialCode = materialCodesPerPart[part][colorIndex];
+    const materialCode = normalizeMaterialCode(rawMaterialCode);
     const basePath = `Textures/${modelName}/${part}/Color_${materialCode}_`;
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
@@ -725,10 +726,12 @@ function loadTextures(part, colorIndex) {
             window._lastLoadedTextures = textures;
             updateTexturePreviewPanel(textures);
             // essayer de trouver un swatch serveur : Color_<code>_Swatch.png|jpg|webp
-            (async () => {
-                try {
-                    const materialCode = materialCodesPerPart[part][colorIndex];
-                    const swatch = await findSwatchForMaterial(basePath, materialCode);
+                (async () => {
+                    try {
+                        const rawMaterialCode = materialCodesPerPart[part][colorIndex];
+                        const materialCode = normalizeMaterialCode(rawMaterialCode);
+                        const folderPath = `Textures/${modelName}/${part}/`;
+                        const swatch = await findSwatchForMaterial(folderPath, materialCode);
                     if (swatch) {
                         const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
                         if (btn) {
@@ -751,6 +754,104 @@ function loadTextures(part, colorIndex) {
             log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
         }
     });
+}
+
+// Normalize material code: accept either 'W001' or 'Color_W001' and return 'W001'
+function normalizeMaterialCode(code) {
+    if (!code) return code;
+    const s = String(code);
+    return s.replace(/^Color_/i, '');
+}
+
+// In-memory cache to avoid repeated network checks for swatches
+const _swatchLookupCache = new Map();
+
+/**
+ * Trouve la vignette (swatch) pour un matériau donné.
+ * Recherche d'abord un `index.json` côté dossier (optionnel) puis tente des patterns connus.
+ * @param {string} folderPath - Chemin du dossier (ex: 'Textures/fauteuil/Assise/')
+ * @param {string} materialCode - Code matériau normalisé (ex: 'L001' ou 'Color_L001')
+ * @returns {Promise<string|null>} - URL de la vignette ou null si introuvable
+ */
+async function findSwatchForMaterial(folderPath, materialCode) {
+    if (!folderPath) return null;
+    const folder = folderPath.endsWith('/') ? folderPath : folderPath + '/';
+    const code = normalizeMaterialCode(materialCode);
+    const cacheKey = folder + code;
+    if (_swatchLookupCache.has(cacheKey)) return _swatchLookupCache.get(cacheKey);
+
+    // 1) Tentative : lire un index.json local (par-part) si présent
+    try {
+        const resp = await fetch(folder + 'index.json');
+        if (resp.ok) {
+            const data = await resp.json();
+            // Format attendu possible : { swatches: { "L001": "Color_L001_thumb.jpg" }, files: [...], items: [...] }
+            if (data && typeof data === 'object') {
+                if (data.swatches && data.swatches[code]) {
+                    const candidate = folder + data.swatches[code];
+                    if (await checkImageExists(candidate)) {
+                        _swatchLookupCache.set(cacheKey, candidate);
+                        return candidate;
+                    }
+                }
+
+                const arrayCandidates = data.items || data.files || data.list || null;
+                if (Array.isArray(arrayCandidates)) {
+                    for (const it of arrayCandidates) {
+                        if (typeof it === 'string') {
+                            // string could be filename
+                            if (it.includes(code)) {
+                                const p = folder + it;
+                                if (await checkImageExists(p)) {
+                                    _swatchLookupCache.set(cacheKey, p);
+                                    return p;
+                                }
+                            }
+                        } else if (it && typeof it === 'object') {
+                            const itCode = it.code || it.name || it.id || null;
+                            if (itCode && String(itCode).includes(code)) {
+                                const thumb = it.thumb || it.file || it.path || null;
+                                if (thumb) {
+                                    const p = folder + thumb;
+                                    if (await checkImageExists(p)) {
+                                        _swatchLookupCache.set(cacheKey, p);
+                                        return p;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        // ignore index.json errors and fallback to pattern search
+    }
+
+    // 2) Patterns : préférer suffixe `_thumb` (jpg/jpeg/png/webp), fallback `_Swatch`
+    const preferredExts = ['jpg', 'jpeg', 'png', 'webp'];
+    const suffixes = ['_thumb', '_Swatch'];
+
+    for (const suffix of suffixes) {
+        for (const ext of preferredExts) {
+            const p = `${folder}Color_${code}${suffix}.${ext}`;
+            if (await checkImageExists(p)) {
+                _swatchLookupCache.set(cacheKey, p);
+                return p;
+            }
+        }
+        // essayer aussi sans le préfixe `Color_` (certaines intégrations stockent juste `<code>_thumb.jpg`)
+        for (const ext of preferredExts) {
+            const p2 = `${folder}${code}${suffix}.${ext}`;
+            if (await checkImageExists(p2)) {
+                _swatchLookupCache.set(cacheKey, p2);
+                return p2;
+            }
+        }
+    }
+
+    _swatchLookupCache.set(cacheKey, null);
+    return null;
 }
 
 // ================================================================================
@@ -1529,12 +1630,13 @@ function generateColorButtons() {
             try { applyLabelOptionsWhenReady(container.id, CIRCULAR_LABEL_DEFAULTS_COLOR); } catch (e) { /* ignore */ }
 
         // initialise toggle swatch (try server swatch or fallback)
-        (async () => {
-            if (codes.length > 0) {
-                const idx = currentColorIndex[part] || 0;
-                const basePath = `Textures/${modelName}/${part}/`;
-                const materialCode = codes[idx];
-                const swatch = await findSwatchForMaterial(basePath, materialCode);
+            (async () => {
+                if (codes.length > 0) {
+                    const idx = currentColorIndex[part] || 0;
+                    const basePath = `Textures/${modelName}/${part}/`;
+                    const rawMaterialCode = codes[idx];
+                    const materialCode = normalizeMaterialCode(rawMaterialCode);
+                    const swatch = await findSwatchForMaterial(basePath, materialCode);
                 if (swatch) {
                     toggleSw.style.backgroundImage = `url('${swatch}')`;
                     toggleSw.style.backgroundColor = 'transparent';
@@ -1558,7 +1660,8 @@ async function updateToggleSwatch(part, idx) {
         if (!container) return;
         const toggleSw = container.querySelector('.color-dropdown-toggle .swatch');
         const basePath = `Textures/${modelName}/${part}/`;
-        const materialCode = materialCodesPerPart[part][idx];
+        const rawMaterialCode = materialCodesPerPart[part][idx];
+        const materialCode = normalizeMaterialCode(rawMaterialCode);
         const swatch = await findSwatchForMaterial(basePath, materialCode);
         if (swatch) {
             toggleSw.style.backgroundImage = `url('${swatch}')`;
@@ -1610,15 +1713,7 @@ function updateColorButtonSwatch(part, textures) {
     }
 }
 
-// Cherche un swatch côté serveur pour un materialCode donné (Color_<code>_Swatch.ext)
-async function findSwatchForMaterial(basePath, materialCode) {
-    const exts = ['png', 'jpg', 'webp'];
-    const candidates = exts.map(ext => `${basePath}Color_${materialCode}_Swatch.${ext}`);
-    for (const c of candidates) {
-        if (await checkImageExists(c)) return c;
-    }
-    return null;
-}
+
 
 // Fonction pour générer le sélecteur d'environment maps
 function generateEnvironmentSelector() {
