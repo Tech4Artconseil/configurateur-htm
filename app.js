@@ -192,7 +192,7 @@ let directionalLight;
 // Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, sans extension
 let modelExtension = null; // Extension détectée automatiquement (glb ou gltf)
-let productParts = ['Pied', 'Assise', "Autre"]; // Tableau des parties configurables du produit
+let productParts = ['Pied', 'Assise']//, "Autre"]; // Tableau des parties configurables du produit
 // Codes de matériaux disponibles par partie (détectés automatiquement)
 let materialCodesPerPart = {};
 let currentColorIndex = {}; // Index dans le tableau de codes
@@ -262,11 +262,39 @@ async function scanEnvironmentMaps() {
     log('Scan des environment maps...');
     const basePath = 'Textures/environement/';
     const extensions = ['jpg', 'jpeg', 'png', 'hdr', 'exr'];
+
+    // 1) Prefer index.json if present: fast single request to build UI
+    try {
+        const idxResp = await fetch(basePath + 'index.json');
+        if (idxResp.ok) {
+            const list = await idxResp.json();
+            const maps = [];
+            for (const item of list) {
+                const file = item.file || item.path || (item.name ? item.name : null);
+                if (!file) continue;
+                const ext = (file.split('.').pop() || '').toLowerCase();
+                maps.push({
+                    name: item.name || file.replace(/\.[^.]+$/, ''),
+                    path: basePath + file,
+                    extension: ext,
+                    displayName: item.displayName || item.name || file,
+                    thumb: item.thumb ? (basePath + item.thumb) : null,
+                    type: item.type || ext
+                });
+            }
+            availableEnvironmentMaps = maps;
+            log(`✓ ${maps.length} environment map(s) chargée(s) depuis index.json`);
+            return maps;
+        }
+    } catch (e) {
+        // ignore and fallback to heuristic scan
+    }
+
+    // Fallback: heuristic scan (existing behaviour)
     const foundMaps = [];
-    
     // Liste de noms communs à tester (peut être étendue)
-    const commonNames =  envirfilename
-    
+    const commonNames = envirfilename;
+
     // Tester chaque combinaison nom + extension
     for (const name of commonNames) {
         for (const ext of extensions) {
@@ -296,15 +324,15 @@ async function scanEnvironmentMaps() {
             }
         }
     }
-    
+
     availableEnvironmentMaps = foundMaps;
-    
+
     if (foundMaps.length === 0) {
         log('⚠ Aucune environment map trouvée dans Textures/environement/', 'warning');
     } else {
         log(`✓ ${foundMaps.length} environment map(s) détectée(s)`);
     }
-    
+
     return foundMaps;
 }
 

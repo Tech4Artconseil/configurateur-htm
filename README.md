@@ -187,6 +187,68 @@ Textures/
       └─ ...
 ```
 
+### Nomenclature des fichiers d'environment et édition de `index.json`
+
+Pour accélérer le démarrage de l'UI, le projet supporte un fichier `index.json` dans `Textures/environement/` décrivant les environment maps disponibles et leurs miniatures. Lorsqu'il est présent, l'application lit `index.json` en priorité (une seule requête) et construit immédiatement le sélecteur d'environment avec les miniatures LDR. Les fichiers lourds HDR/EXR sont ensuite chargés en lazy-load lors de la sélection.
+
+Règles de nommage recommandées :
+
+- Fichier d'environment : `BaseName.ext` (ex. `Default.hdr`, `Env_01.exr`, `Env_02.exr`).
+- Miniature (thumb) : `BaseName_thumb.jpg` (ou `.png`, `.webp`) — ici nous recommandons JPEG pour compatibilité et taille réduite.
+- Vignette côté serveur : placer `Default_thumb.jpg`, `Env_01_thumb.jpg`, `Env_02_thumb.jpg` dans `Textures/environement/`.
+
+Format et champs utiles de `index.json` :
+
+- `file` : (required) nom du fichier d'environment tel qu'il est sur le serveur (ex: `Env_01.exr`).
+- `name` : identifiant court (optionnel) utilisé en interne.
+- `displayName` : texte affiché dans l'UI (optionnel).
+- `thumb` : chemin relatif vers la miniature (ex: `Env_01_thumb.jpg`) — si fourni, l'UI affiche la vignette immédiatement.
+- `type` : `hdr` | `exr` | `ldr` (optionnel, sinon déduit par extension).
+- `priority` : nombre optionnel pour ordonner l'affichage (plus grand = plus haut)
+- `prefiltered` : chemin vers une version PMREM/préfiltrée (optionnel - utile si vous pré-générez des KTX2/PMREM côté serveur)
+
+Exemple minimal de `index.json` (placer dans `Textures/environement/index.json`) :
+
+```json
+[
+  {
+    "name": "Default",
+    "file": "Default.hdr",
+    "type": "hdr",
+    "displayName": "Default",
+    "thumb": "Default_thumb.jpg"
+  },
+  {
+    "name": "Env_01",
+    "file": "Env_01.exr",
+    "type": "exr",
+    "displayName": "Env 01",
+    "thumb": "Env_01_thumb.jpg"
+  },
+  {
+    "name": "Env_02",
+    "file": "Env_02.exr",
+    "type": "exr",
+    "displayName": "Env 02",
+    "thumb": "Env_02_thumb.jpg"
+  }
+]
+```
+
+Bonnes pratiques et notes :
+
+- Si `index.json` est absent ou invalide, l'application retombe sur le scan heuristique existant (HEAD requests). Ainsi vous pouvez déployer progressivement `index.json` sans casser le service.
+- Servez `index.json` et les miniatures avec des en-têtes HTTP de cache (Cache-Control) pour accélérer les visites suivantes.
+- Si vous avez la possibilité, fournissez une version préfiltrée (`prefiltered`) ou KTX2 pour éviter le coût CPU côté client (PMREM). Le champ `prefiltered` permet au client d'utiliser cette texture directement.
+- Conservez les miniatures petites (ex: 160×80 ou 256×128) pour une UI réactive.
+
+Modification du JSON :
+
+- Éditez `Textures/environement/index.json` sur le serveur pour ajouter/retirer des entrées.
+- Après modification, invalidez le cache HTTP si nécessaire (ou changez le nom du fichier) pour forcer la mise à jour côté client.
+- Exemple de champ additionnel pour priorité : `{ "file": "Default.hdr", "priority": 100 }` — le loader lira le tableau dans l'ordre fourni, vous pouvez également trier côté serveur.
+
+
 **Sélecteur d'environment maps :**
 - Au démarrage, le système scanne le dossier `Textures/environement/` pour détecter les fichiers disponibles
 - Les noms à rechercher sont définis dans la variable `envirfilename`
@@ -333,6 +395,44 @@ Pour une référence rapide, voici la liste compacte des variables modifiables d
 Modifier ces variables dans `app.js` permet d'ajuster le comportement au démarrage. Si vous souhaitez, j'ajoute également un tableau Markdown complet (variable | type | défaut | description) pour remplacer ce récapitulatif.
 
 ---
+
+## Aide : options des labels circulaires (texte autour des boutons)
+
+Cette section documente les options disponibles pour contrôler les textes circulaires générés autour des boutons (sélecteurs d'environnement et boutons de couleur).
+
+- `containerId` : `string` — Identifiant du conteneur DOM cible (ex: `pied-color-dropdown`, `env-dropdown`).
+- `startAt` : `"top" | "bottom"` — Place le chemin du texte au-dessus (`top`) ou en dessous (`bottom`) du centre du bouton. Pour afficher le texte en haut du bouton utilisez `startAt: 'top'`.
+- `radius` : `number` — Rayon (en px) du chemin circulaire par rapport au centre du bouton. Valeurs typiques : `30` à `70` selon la taille du bouton.
+- `startOffset` : `string|number` — Position le long du chemin où commence le texte. Exemple : `'50%'` centre le texte autour du point choisi. Utilisez `'50%'` pour centrer le texte en haut.
+- `textAnchor` : `"middle" | "start" | "end"` — Alignement du texte par rapport à `startOffset`. Pour centrer : `textAnchor: 'middle'`.
+- `fontSize` : `number` — Taille du texte en px (ex: `10`, `12`, `18`).
+- `color` : `string` — Couleur du texte (hex, `rgb(...)`, etc.).
+- `direction` : `"cw" | "ccw"` — Sens d'écriture le long du cercle : `cw` = horaire (par défaut), `ccw` = antihoraire.
+
+Conseil rapide pour placer le texte centré en haut du bouton :
+
+```javascript
+window.setCircularLabelOptions({
+  containerId: 'pied-color-dropdown',
+  startAt: 'top',
+  radius: 40,
+  startOffset: '50%',
+  textAnchor: 'middle',
+  fontSize: 12,
+  color: '#222',
+  direction: 'cw'
+});
+```
+
+Si le DOM n'est pas encore prêt, utilisez le helper de retry :
+
+```javascript
+applyLabelOptionsWhenReady('pied-color-dropdown', {
+  startAt: 'top', radius: 40, startOffset: '50%', textAnchor: 'middle', fontSize: 12
+});
+```
+
+Si le texte ne s'affiche pas comme prévu, essayez d'augmenter `radius` ou `fontSize`, ou vérifiez que l'élément `containerId` existe dans le DOM.
 
 ## Propriété intellectuelle & licence
 

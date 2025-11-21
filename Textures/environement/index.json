@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Default",
+    "file": "Default.hdr",
+    "type": "hdr",
+    "displayName": "Default",
+    "thumb": "Default_thumb.jpg"
+  },
+  {
+    "name": "Env_01",
+    "file": "Env_01.exr",
+    "type": "exr",
+    "displayName": "Env 01",
+    "thumb": "Env_01_thumb.jpg"
+  },
+  {
+    "name": "Env_02",
+    "file": "Env_02.exr",
+    "type": "exr",
+    "displayName": "Env 02",
+    "thumb": "Env_02_thumb.jpg"
+  }
+]
