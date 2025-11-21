@@ -161,6 +161,13 @@ let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.
 let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
 let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
 let envirfilename = ['Default_Lit','Env_01_Lit', 'Env_01_UnLit', 'Env_02_Lit', 'Env_02_UnLit' ];
+// Global defaults for circular label helpers (modifiable at runtime)
+const CIRCULAR_LABEL_DEFAULTS_ENV = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
+const CIRCULAR_LABEL_DEFAULTS_COLOR = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
+
+// NOTE: helper functions and their runtime calls have been moved
+// down next to the UI generation code (generateEnvironmentSelector / generateColorButtons)
+// pour garder la logique proche des éléments DOM qu'elles manipulent.
 
 // Fonction de logging
 function log(message, type = 'info') {
@@ -915,6 +922,21 @@ async function changeEnvironment(options = {}) {
             
             // Réappliquer aux matériaux existants
             applyEnvMapIntensityToMaterials(intensity);
+            // Mettre à jour le label circulaire du toggle d'environment si présent
+            try {
+                const container = document.getElementById('env-dropdown');
+                if (container && container._envTextPath) {
+                    // Trouver le displayName correspondant si disponible
+                    const found = availableEnvironmentMaps.find(m => m.path === envMapPath);
+                    const label = found ? (found.displayName || found.name) : (envMapPath ? envMapPath.split('/').pop() : 'Env');
+                    const thumb = found ? found.thumb : null;
+                    container._envTextPath.textContent = label;
+                    // Si le toggle img existe, update src
+                    const toggleImg = container.querySelector('.env-dropdown-toggle img');
+                    if (toggleImg && (thumb || envMapPath)) toggleImg.src = thumb || envMapPath;
+                    if (toggleImg) toggleImg.style.display = thumb || envMapPath ? '' : 'none';
+                }
+            } catch (e) { /* ignore UI update errors */ }
         } else {
             useEnvironmentMap = false;
             backgroundColor = color;
@@ -1245,6 +1267,115 @@ function frameModel(model, options = {}) {
 }
 
 // Fonction pour générer les boutons de couleur dynamiquement
+// Helper: apply label options when the target container exists (retries a few times)
+function applyLabelOptionsWhenReady(containerId, options = {}, maxTries = 20, intervalMs = 200) {
+    let tries = 0;
+    const tryApply = () => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            try {
+                setCircularLabelOptions(Object.assign({ containerId }, options));
+            } catch (e) {
+                // ignore
+            }
+            return;
+        }
+        tries++;
+        if (tries < maxTries) setTimeout(tryApply, intervalMs);
+    };
+    tryApply();
+}
+
+// Utility: Adjust circular label options for env toggle at runtime
+function setEnvToggleLabelOptions(options = {}) {
+    const {
+        containerId = 'env-dropdown',
+        fontSize = (typeof options.fontSize !== 'undefined' ? options.fontSize : undefined),
+        radius = (typeof options.radius !== 'undefined' ? options.radius : undefined),
+        startOffset = (typeof options.startOffset !== 'undefined' ? options.startOffset : undefined),
+        color = (typeof options.color !== 'undefined' ? options.color : undefined),
+        textAnchor = (typeof options.textAnchor !== 'undefined' ? options.textAnchor : undefined),
+        startAt = (typeof options.startAt !== 'undefined' ? options.startAt : undefined),
+        direction = (typeof options.direction !== 'undefined' ? options.direction : undefined)
+    } = options;
+
+    try {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const svg = container.querySelector('.env-toggle-svg, .circular-label-svg');
+        if (!svg) return;
+        const path = svg.querySelector('path');
+        const text = svg.querySelector('text');
+        const textPath = svg.querySelector('textPath');
+
+        // Resolve options with precedence: explicit option -> part-specific defaults -> env defaults (master)
+        const globalDefaults = CIRCULAR_LABEL_DEFAULTS_ENV || {};
+        const partDefaults = (containerId === 'env-dropdown') ? CIRCULAR_LABEL_DEFAULTS_ENV : CIRCULAR_LABEL_DEFAULTS_COLOR || {};
+
+        const useFontSize = (typeof fontSize !== 'undefined') ? fontSize : (typeof partDefaults.fontSize !== 'undefined' ? partDefaults.fontSize : globalDefaults.fontSize);
+        const useRadius = (typeof radius !== 'undefined') ? radius : (typeof partDefaults.radius !== 'undefined' ? partDefaults.radius : globalDefaults.radius);
+        const useStartOffset = (typeof startOffset !== 'undefined') ? startOffset : (typeof partDefaults.startOffset !== 'undefined' ? partDefaults.startOffset : globalDefaults.startOffset);
+        const useColor = (typeof color !== 'undefined') ? color : (typeof partDefaults.color !== 'undefined' ? partDefaults.color : globalDefaults.color);
+        const useTextAnchor = (typeof textAnchor !== 'undefined') ? textAnchor : (typeof partDefaults.textAnchor !== 'undefined' ? partDefaults.textAnchor : globalDefaults.textAnchor);
+        const useStartAt = (typeof startAt !== 'undefined') ? startAt : (typeof partDefaults.startAt !== 'undefined' ? partDefaults.startAt : globalDefaults.startAt);
+        const useDirection = (typeof direction !== 'undefined') ? direction : (typeof partDefaults.direction !== 'undefined' ? partDefaults.direction : globalDefaults.direction);
+
+        // update radius (path 'd') if present
+        if (path && typeof useRadius === 'number') {
+            const startOffsetY = (String(useStartAt).toLowerCase() === 'bottom') ? `${useRadius}` : `-${useRadius}`;
+            const sweepFlag = (String(useDirection).toLowerCase() === 'ccw') ? 0 : 1;
+            path.setAttribute('d', `M50,50 m0,${startOffsetY} a${useRadius},${useRadius} 0 1,${sweepFlag} -0.01,0`);
+        }
+
+        if (text) {
+            try {
+                const px = `${Number(useFontSize)}px`;
+                text.setAttribute('style', `font-size: ${px}; fill: ${useColor}; text-anchor: ${useTextAnchor};`);
+                if (textPath) textPath.setAttribute('style', `font-size: ${px}; fill: ${useColor}; text-anchor: ${useTextAnchor};`);
+                text.setAttribute('font-size', String(useFontSize));
+                text.setAttribute('fill', useColor);
+                text.setAttribute('text-anchor', String(useTextAnchor));
+                if (textPath) {
+                    textPath.setAttribute('font-size', String(useFontSize));
+                    textPath.setAttribute('fill', useColor);
+                    textPath.setAttribute('text-anchor', String(useTextAnchor));
+                    try { textPath.setAttribute('side', String(useDirection).toLowerCase() === 'ccw' ? 'right' : 'left'); } catch (e) { /* ignore */ }
+                }
+            } catch (e) {
+                if (textPath) {
+                    textPath.setAttribute('font-size', String(useFontSize));
+                    textPath.setAttribute('fill', useColor);
+                    textPath.setAttribute('text-anchor', String(useTextAnchor));
+                }
+            }
+        }
+
+        if (text) {
+            try {
+                if (String(useStartAt).toLowerCase() === 'bottom') {
+                    text.setAttribute('transform', 'rotate(180 50 50)');
+                } else {
+                    text.removeAttribute('transform');
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        if (textPath) {
+            textPath.setAttribute('startOffset', String(useStartOffset));
+        }
+    } catch (e) {
+        // ignore errors
+    }
+}
+
+// Alias / generic helper: allow controlling any circular label (env or color toggles)
+function setCircularLabelOptions(options = {}) {
+    return setEnvToggleLabelOptions(options);
+}
+
+// Expose the helper globally for runtime calls
+window.setCircularLabelOptions = setCircularLabelOptions;
+window.setEnvToggleLabelOptions = setEnvToggleLabelOptions;
 function generateColorButtons() {
     const colorButtonsDiv = document.getElementById('color-buttons');
     colorButtonsDiv.innerHTML = '';
@@ -1263,6 +1394,40 @@ function generateColorButtons() {
         const toggleSw = document.createElement('div');
         toggleSw.className = 'swatch';
         toggle.appendChild(toggleSw);
+
+        // Create a circular SVG label around the toggle (same system as env selector)
+        try {
+            const SVG_NS = 'http://www.w3.org/2000/svg';
+            const uniqueId = `circ-path-${Math.random().toString(36).slice(2,9)}`;
+            const svg = document.createElementNS(SVG_NS, 'svg');
+            svg.setAttribute('viewBox', '0 0 100 100');
+            svg.setAttribute('class', 'circular-label-svg');
+            svg.setAttribute('aria-hidden', 'true');
+
+            const defs = document.createElementNS(SVG_NS, 'defs');
+            const path = document.createElementNS(SVG_NS, 'path');
+            path.setAttribute('id', uniqueId);
+            // default radius 36
+            path.setAttribute('d', 'M50,50 m0,-36 a36,36 0 1,1 -0.01,0');
+            defs.appendChild(path);
+            svg.appendChild(defs);
+
+            const text = document.createElementNS(SVG_NS, 'text');
+            const textPath = document.createElementNS(SVG_NS, 'textPath');
+            textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${uniqueId}`);
+            textPath.setAttribute('startOffset', '50%');
+            textPath.setAttribute('text-anchor', 'middle');
+            textPath.textContent = part;
+            text.appendChild(textPath);
+            svg.appendChild(text);
+
+            toggle.appendChild(svg);
+            // store reference on the container for later updates if needed
+            container.dataset.circLabelId = uniqueId;
+            container._circTextPath = textPath;
+        } catch (e) {
+            // ignore SVG creation errors
+        }
         container.appendChild(toggle);
 
         // Menu
@@ -1331,6 +1496,9 @@ function generateColorButtons() {
         });
 
         colorButtonsDiv.appendChild(container);
+
+            // Apply circular label defaults for this dropdown when ready
+            try { applyLabelOptionsWhenReady(container.id, CIRCULAR_LABEL_DEFAULTS_COLOR); } catch (e) { /* ignore */ }
 
         // initialise toggle swatch (try server swatch or fallback)
         (async () => {
@@ -1451,9 +1619,42 @@ function generateEnvironmentSelector() {
     const toggle = document.createElement('button');
     toggle.className = 'env-dropdown-toggle';
     toggle.type = 'button';
+    // thumbnail image inside the round toggle
     const thumbImg = document.createElement('img');
     thumbImg.alt = 'env-thumb';
     toggle.appendChild(thumbImg);
+
+    // SVG text around the button (circular path)
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const uniqueId = `env-path-${Math.random().toString(36).slice(2,9)}`;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('class', 'env-toggle-svg');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const defs = document.createElementNS(SVG_NS, 'defs');
+    const path = document.createElementNS(SVG_NS, 'path');
+    // circle path centered at 50,50 with radius 36 (adjust to sit around the thumb)
+    path.setAttribute('id', uniqueId);
+    path.setAttribute('d', 'M50,50 m0,-36 a36,36 0 1,1 -0.01,0');
+    defs.appendChild(path);
+    svg.appendChild(defs);
+
+    const text = document.createElementNS(SVG_NS, 'text');
+    const textPath = document.createElementNS(SVG_NS, 'textPath');
+    // Use href for modern browsers
+    textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${uniqueId}`);
+    textPath.setAttribute('startOffset', '50%');
+    textPath.setAttribute('text-anchor', 'middle');
+    textPath.textContent = 'Aucun';
+    text.appendChild(textPath);
+    svg.appendChild(text);
+
+    // keep references on container for later updates
+    container.dataset.envTextPathId = uniqueId;
+    container._envTextPath = textPath;
+
+    toggle.appendChild(svg);
     container.appendChild(toggle);
 
     const menu = document.createElement('div');
@@ -1462,11 +1663,13 @@ function generateEnvironmentSelector() {
     // add a 'none' item
     const noneItem = document.createElement('div');
     noneItem.className = 'env-item';
-    noneItem.innerHTML = `<div class="env-label">Aucun (couleur de fond)</div>`;
+    noneItem.innerHTML = `<div class="env-label">Aucun</div>`;
     noneItem.addEventListener('click', async () => {
         await changeEnvironment({ type: 'color', color: backgroundColorUnlit, intensity: ambientLightIntensityUnlit });
         container.classList.remove('open');
         thumbImg.style.display = 'none';
+        // update circular label
+        if (container && container._envTextPath) container._envTextPath.textContent = 'Aucun';
     });
     menu.appendChild(noneItem);
 
@@ -1488,9 +1691,10 @@ function generateEnvironmentSelector() {
         item.addEventListener('click', async () => {
             log(`Changement d'environment map: ${envMap.path}`);
             await changeEnvironment({ type: 'envmap', envMapPath: envMap.path, intensity: envMapIntensity, rotation: envMapRotation });
-            // update toggle thumb
+            // update toggle thumb and circular label
             thumbImg.src = envMap.thumb || envMap.path;
             thumbImg.style.display = '';
+            if (container && container._envTextPath) container._envTextPath.textContent = envMap.displayName || envMap.name || envMap.path.split('/').pop();
             container.classList.remove('open');
         });
 
@@ -1509,7 +1713,12 @@ function generateEnvironmentSelector() {
     document.addEventListener('click', (ev) => { if (!container.contains(ev.target)) container.classList.remove('open'); });
 
     log(`✓ Sélecteur d'environment créé avec ${availableEnvironmentMaps.length} option(s)`);
+
+    // Apply circular label defaults for environment toggle when ready
+    try { applyLabelOptionsWhenReady('env-dropdown', CIRCULAR_LABEL_DEFAULTS_ENV); } catch (e) { /* ignore */ }
 }
+
+// (duplicate helper removed — implementation kept earlier near UI generation)
 
 // -----------------------------------------------------------------------------
 // Panneau dynamique des previews de textures

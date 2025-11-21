@@ -119,7 +119,7 @@ button:hover {
 }
 
 .color-btn .label {
-    font-size: 10px;
+    font-size: 10px; /*10 part default*/
     color: #000;
 }
 
@@ -195,6 +195,19 @@ button:hover {
     cursor: pointer;
 }
 .env-dropdown-toggle img { width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
+/* SVG circular label around the env toggle */
+.env-toggle-svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+.env-toggle-svg text { fill: #000; font-size: 8px; font-family: 'Inter', Arial, sans-serif; }
+.env-toggle-svg textPath { dominant-baseline: middle; }
+.env-dropdown-toggle { position: relative; overflow: visible; }
 .env-dropdown-menu {
     position: absolute;
     top: calc(100% + 8px);
@@ -327,3 +340,44 @@ body.show-logs #log-panel, body.show-logs #log-content { display: block; }
     top: 40px;
     z-index: 10002;
 }
+
+/* Uniform styles for circular SVG labels (environment and color toggles)
+   - non-interactive (pointer-events: none) so buttons remain clickable
+   - positioned to fully cover the toggle button and use viewBox coords (0..100)
+   - ensure transform origin is the svg center for rotations applied via JS
+*/
+.env-toggle-svg,
+.circular-label-svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+    transform-origin: 50% 50%;
+}
+
+.env-toggle-svg text,
+.circular-label-svg text {
+    fill: #000;
+    font-size: 10px;
+    font-family: 'Inter', Arial, sans-serif;
+    pointer-events: none;
+}
+
+.env-toggle-svg textPath,
+.circular-label-svg textPath {
+    dominant-baseline: middle;
+    text-anchor: middle;
+}
+
+/* Ensure dropdown toggles keep relative positioning so SVG can align correctly */
+.color-dropdown-toggle,
+.env-dropdown-toggle {
+    position: relative;
+    overflow: visible;
+}
+
+/* Slight visual tweak: keep SVG labels visually subtle */
+.circular-label-svg text { opacity: 0.95; }
