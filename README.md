@@ -331,3 +331,29 @@ Pour une référence rapide, voici la liste compacte des variables modifiables d
 - `modelName`, `modelExtension`, `productParts`, `materialCodesPerPart`, `currentColorIndex`, `availableEnvironmentMaps`, `autoRotateSpeed`
 
 Modifier ces variables dans `app.js` permet d'ajuster le comportement au démarrage. Si vous souhaitez, j'ajoute également un tableau Markdown complet (variable | type | défaut | description) pour remplacer ce récapitulatif.
+
+---
+
+## Propriété intellectuelle & licence
+
+Ce projet est la propriété de Tech4Art Conseil (Jean-Baptiste BARON).
+
+- Auteur : Jean-Baptiste BARON
+- Contact : tech4artconseil@gmail.com
+- Site : https://tech4art.fr
+- Société : Tech4Art Conseil
+- SIRET : 48017112300064
+
+Licence : ce code est distribué sous une licence propriétaire restrictive ("All rights reserved").
+L'utilisation, la copie, la modification, la distribution ou la publication du code
+ne sont pas autorisées sans l'accord écrit explicite du titulaire des droits.
+
+Voir le fichier `LICENSE_PROPRIETARY.txt` pour le texte complet de la licence,
+les mentions légales : https://tech4art.fr/mentions-legales/
+et la page Propriété Intellectuelle : https://tech4art.fr/propriete-intellectuelle-tech4artconseil-fr/
+
+Pour toute demande commerciale, d'intégration, d'achat de licence ou de réutilisation,
+contactez : tech4artconseil@gmail.com
+
+Référence / guide pour la formulation de licences :
+https://doc-publique.pages.xlim.fr/une%20licence%20sur%20mon%20code/

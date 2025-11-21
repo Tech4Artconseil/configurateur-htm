@@ -1,0 +1,49 @@
+Tech4Art Conseil — Licence propriétaire
+======================================
+
+Titulaire : Jean-Baptiste BARON (Tech4Art Conseil)
+Contact : tech4artconseil@gmail.com
+Site    : https://www.tech4art.fr
+SIRET   : 48017112300064
+Année   : 2025
+
+Copyright (c) 2025 Jean-Baptiste BARON — Tous droits réservés.
+
+Texte de licence (extrait)
+--------------------------
+Ce logiciel, ses sources, ses ressources et sa documentation (ci-après « le Logiciel »)
+sont la propriété exclusive de Tech4Art Conseil et sont protégés par le droit d'auteur
+et autres droits de propriété intellectuelle.
+
+Sauf autorisation écrite et expresse du titulaire des droits, toute reproduction,
+distribution, mise à disposition, modification, adaptation, traduction,
+exploitation commerciale ou intégration dans un produit tiers est strictement
+interdite.
+
+A titre d'exemple, les actions suivantes sont interdites sans licence explicite :
+- Publier ou redistribuer le code source ou des versions compilées du Logiciel.
+- Créer des œuvres dérivées distribuées publiquement.
+- Utiliser le Logiciel comme composant dans un produit commercial sans accord.
+
+Demandes de licence commerciale / autorisation
+----------------------------------------------
+Pour obtenir une autorisation, une offre de licence commerciale ou pour toute
+question relative aux droits d'utilisation, contactez :
+
+    tech4artconseil@gmail.com
+
+Mentions légales et propriété intellectuelle :
+https://tech4art.fr/mentions-legales/
+https://tech4art.fr/propriete-intellectuelle-tech4artconseil-fr/
+
+Limitations de responsabilité
+-----------------------------
+Le Logiciel est fourni "tel quel" sans garantie d'aucune sorte. Le titulaire des
+droits ne pourra être tenu responsable des dommages directs ou indirects
+résultant de l'utilisation du Logiciel.
+
+Version : 1.0
+Date : 2025-11-21
+
+Lien de référence / guide :
+https://doc-publique.pages.xlim.fr/une%20licence%20sur%20mon%20code/

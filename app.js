@@ -1,3 +1,27 @@
+/*
+ * ----------------------------------------------------------------------------
+ * Tech4Art Conseil / Jean-Baptiste BARON
+ * Propriété intellectuelle & licence
+ *
+ * Auteur : Jean-Baptiste BARON
+ * Contact : tech4artconseil@gmail.com
+ * Site    : https://www.tech4art.fr
+ * Société : Tech4Art Conseil
+ * SIRET   : 48017112300064
+ *
+ * Déclaration :
+ * © 2025 Jean-Baptiste BARON — Tous droits réservés.
+ * Ce code est fourni sous une licence propriétaire restrictive. Toute
+ * utilisation, copie, modification, distribution ou publication est
+ * interdite sauf autorisation écrite explicite du titulaire des droits.
+ * Pour les détails et conditions, voir le fichier `LICENSE_PROPRIETARY.txt`
+ * et les mentions légales : https://tech4art.fr/mentions-legales/
+ * Propriété intellectuelle : https://tech4art.fr/propriete-intellectuelle-tech4artconseil-fr/
+ *
+ * Pour toute demande commerciale ou SDK/API, contactez : tech4artconseil@gmail.com
+ * ----------------------------------------------------------------------------
+ */
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
