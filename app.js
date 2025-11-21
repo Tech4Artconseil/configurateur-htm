@@ -1202,19 +1202,69 @@ function generateColorButtons() {
             const btn = document.createElement('button');
             btn.id = `${part.toLowerCase()}-color-btn`;
             btn.className = 'color-btn';
-            btn.textContent = `${part} (${materialCodesPerPart[part].length})`;
+
+            // swatch (round thumbnail)
+            const sw = document.createElement('div');
+            sw.className = 'swatch';
+            sw.dataset.part = part;
+            btn.appendChild(sw);
+
+            // label with part name and count
+            const lbl = document.createElement('span');
+            lbl.className = 'label';
+            lbl.textContent = `${part} (${materialCodesPerPart[part].length})`;
+            btn.appendChild(lbl);
+
             btn.addEventListener('click', () => {
                 currentColorIndex[part] = (currentColorIndex[part] + 1) % materialCodesPerPart[part].length;
                 const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
                 log(`Changement ${part}: ${materialCode}`);
                 loadTextures(part, currentColorIndex[part]);
             });
+
             colorButtonsDiv.appendChild(btn);
             log(`✓ Bouton créé pour ${part} avec ${materialCodesPerPart[part].length} options`);
         } else {
             log(`✗ Pas de codes matériaux pour ${part}`, 'warning');
         }
     });
+}
+
+// Met à jour la swatch du bouton couleur pour une partie donnée avec la texture albedo si disponible
+function updateColorButtonSwatch(part, textures) {
+    try {
+        const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
+        if (!btn) return;
+        const sw = btn.querySelector('.swatch');
+        if (!sw) return;
+
+        // chercher une source pour la texture albedo
+        let src = null;
+        if (textures && textures.albedo && textures.albedo.image) {
+            const imgObj = textures.albedo.image;
+            if (imgObj.src) src = imgObj.src;
+            else if (imgObj instanceof HTMLCanvasElement) src = imgObj.toDataURL();
+        }
+
+        if (src) {
+            sw.style.backgroundImage = `url('${src}')`;
+        } else {
+            // fallback: afficher le code texte (dernier materialCode)
+            const codes = materialCodesPerPart[part];
+            const idx = currentColorIndex[part] || 0;
+            const code = (codes && codes[idx]) ? codes[idx] : '';
+            sw.style.backgroundImage = '';
+            sw.style.background = '#ddd';
+            sw.textContent = code ? code.slice(0,2) : '';
+            sw.style.display = 'flex';
+            sw.style.alignItems = 'center';
+            sw.style.justifyContent = 'center';
+            sw.style.fontSize = '8px';
+            sw.style.color = '#000';
+        }
+    } catch (e) {
+        // ignore
+    }
 }
 
 // Fonction pour générer le sélecteur d'environment maps
@@ -1456,6 +1506,98 @@ function createTexturePreviewToggle() {
 if (showTexturePreviewPanel) {
     createTexturePreviewToggle();
 }
+
+// -----------------------------------------------------------------------------
+// Left text panel (custom text display, toggleable)
+// -----------------------------------------------------------------------------
+function createLeftTextPanel() {
+    if (document.getElementById('left-text-panel')) return document.getElementById('left-text-panel');
+    const panel = document.createElement('div');
+    panel.id = 'left-text-panel';
+
+    // Close button (styled like other UI buttons)
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'panel-close';
+    closeBtn.title = 'Fermer';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => setLeftTextPanelEnabled(false));
+    panel.appendChild(closeBtn);
+
+    const content = document.createElement('div');
+    content.id = 'left-text-panel-content';
+    panel.appendChild(content);
+
+    document.body.appendChild(panel);
+    return panel;
+}
+
+function clearLeftTextPanel() {
+    const panel = document.getElementById('left-text-panel');
+    if (panel && panel.parentElement) panel.parentElement.removeChild(panel);
+}
+
+function setLeftTextPanelEnabled(enabled) {
+    const panel = createLeftTextPanel();
+    panel.style.display = enabled ? 'block' : 'none';
+}
+
+/**
+ * Charge et affiche un fichier texte depuis une URL dans le panneau gauche.
+ * Si aucune URL fournie, tente de charger `left-panel.txt` à la racine.
+ */
+async function loadLeftTextFromUrl(url = 'left-panel.txt') {
+    try {
+        const panel = createLeftTextPanel();
+        const contentDiv = document.getElementById('left-text-panel-content');
+        contentDiv.textContent = 'Chargement...';
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const txt = await resp.text();
+        // Afficher dans un <pre> pour conserver les retours à la ligne
+        contentDiv.innerHTML = '';
+        const pre = document.createElement('pre');
+        pre.textContent = txt;
+        contentDiv.appendChild(pre);
+        setLeftTextPanelEnabled(true);
+        log(`✓ Texte chargé depuis ${url}`);
+    } catch (e) {
+        const contentDiv = document.getElementById('left-text-panel-content');
+        if (contentDiv) contentDiv.textContent = 'Impossible de charger le fichier texte: ' + e.message;
+        setLeftTextPanelEnabled(true);
+        log(`✗ Erreur chargement texte: ${e.message}`, 'warning');
+    }
+}
+
+function createLeftTextToggle() {
+    if (document.getElementById('text-panel-toggle')) return;
+    const btn = document.createElement('button');
+    btn.id = 'text-panel-toggle';
+    btn.textContent = 'i';
+    btn.title = 'Afficher / cacher informations';
+    btn.addEventListener('click', () => {
+        const panel = document.getElementById('left-text-panel');
+        const isVisible = panel && panel.style.display !== 'none';
+        if (isVisible) {
+            setLeftTextPanelEnabled(false);
+        } else {
+            // Si le panel est vide, tenter de charger un fichier par défaut
+            const contentDiv = document.getElementById('left-text-panel-content');
+            if (!contentDiv || contentDiv.innerHTML.trim() === '') {
+                loadLeftTextFromUrl();
+            } else {
+                setLeftTextPanelEnabled(true);
+            }
+        }
+    });
+    document.body.appendChild(btn);
+}
+
+// Créer le toggle pour le panneau de texte (toujours disponible)
+createLeftTextToggle();
+
+// Exposer la fonction globalement pour usage manuel
+window.loadLeftTextFromUrl = loadLeftTextFromUrl;
+window.setLeftTextPanelEnabled = setLeftTextPanelEnabled;
 
 // (no browser forcing UI present)
 
