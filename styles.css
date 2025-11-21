@@ -2,12 +2,37 @@ body {
     margin: 0;
     overflow: hidden;
     font-family: Arial, sans-serif;
+    /* Image d'arrière-plan pour tester la transparence du canvas */
+    background-image: url('images/Background.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
 }
 
+/* Le viewer devient un frame centré qui occupe 80% de la fenêtre */
 #viewer {
     position: relative;
-    width: 100vw;
-    height: 100vh;
+    width: 80vw;
+    height: 80vh;
+    max-width: 1400px;
+    max-height: 900px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    border-radius: 8px;
+    overflow: hidden;
+    background: transparent; /* let page background show through when canvas is transparent */
+}
+
+@media (max-width: 800px) {
+    #viewer {
+        width: 95vw;
+        height: 70vh;
+        max-width: none;
+        max-height: none;
+    }
 }
 
 #threejs-canvas {
@@ -85,6 +110,11 @@ button:hover {
     overflow-y: auto;
     border-top: 2px solid #00ff00;
 }
+
+/* Par défaut, masquer le panneau de logs pour éviter un flash au chargement.
+   Le panneau sera montré en ajoutant la classe `show-logs` sur le <body>. */
+#log-panel, #log-content { display: none; }
+body.show-logs #log-panel, body.show-logs #log-content { display: block; }
 
 #log-header {
     background: rgba(0, 0, 0, 0.9);

@@ -14,6 +14,22 @@ let lightIntensity = 1;
 let ambientLightIntensity = 0.5;
 let autoRotateSpeed = 0.5;
 let backgroundColor = 0xffffff;
+// Rendu transparent (le canvas du viewer montrera le contenu HTML en dessous)
+let transparentBackground = true;
+
+// Contrôles de positionnement initial de la caméra
+// focal length en mm (ex : 70 mm) — sera converti en FOV via camera.setFocalLength()
+let initialFocalLengthMm = 55;
+// Hauteur relative de la caméra par rapport au centre du modèle (unités Three.js)
+let initialCameraHeight = 1.2;
+// Orbit horizontal initial autour du modèle, en degrés (0 = face avant, 90 = côté)
+let initialOrbitDeg = 325;
+// Distance de zoom initiale (en mètres) - si défini > 0, force la distance caméra->centre
+// Mettre `null` ou `0` pour désactiver et utiliser le calcul automatique basé sur `fill`.
+let initialZoomDistance = null;
+// Fraction par défaut de la hauteur de la vue que le modèle doit remplir (0.0 - 1.0)
+// Ex: 0.8 -> le modèle occupera 80% de la hauteur visible
+let initialCameraFill = 0.7;
 
 // Configuration des canaux de textures à charger (true = actif, false = désactivé)
 // flipY: true = retourner verticalement (défaut), false = garder orientation originale
@@ -24,8 +40,63 @@ let textureChannels = {
     height: { enabled: false, extensions: ['jpg', 'png'], flipY: false },
     metallic: { enabled: true, extensions: ['jpg', 'png'], flipY: false },
     normalGL: { enabled: true, extensions: ['png', 'jpg'], flipY: false },
+    roughness: { enabled: true, extensions: ['jpg', 'png'], flipY: false },
     occlusion: { enabled: true, extensions: ['jpg', 'png'], flipY: false }
+    
 };
+
+// -----------------------------------------------------------------------------
+// UI: panneau de preview des textures (affichage configurable)
+// -----------------------------------------------------------------------------
+// Activer / Désactiver l'affichage du panneau (true = affiché)
+let showTexturePreviewPanel = false;
+// Taille des vignettes (en px) - modifiable
+let texturePreviewSize = 120;
+// id du conteneur créé dynamiquement
+const texturePreviewContainerId = 'texture-preview-panel';
+
+// Correction spécifique navigateur
+
+// Activer/désactiver l'affichage des logs dans le viewer (true = logs activés)
+let enableLogging = false;
+
+// Met à jour la visibilité de l'UI de logs selon `enableLogging`.
+function updateLogUIVisibility() {
+    try {
+        // Utiliser une classe sur <body> pour contrôler l'affichage via CSS (évite le flash)
+        if (enableLogging) {
+            document.body.classList.add('show-logs');
+        } else {
+            document.body.classList.remove('show-logs');
+        }
+
+        // Fallback : si l'élément existe et que le dev veut forcer le style, appliquer quand même
+        const logContent = document.getElementById('log-content');
+        if (logContent) {
+            logContent.style.display = enableLogging ? '' : 'none';
+            const parent = logContent.parentElement;
+            if (parent && parent.id && parent.id !== 'log-content') {
+                parent.style.display = enableLogging ? '' : 'none';
+            }
+        }
+    } catch (e) {
+        // Ignore any DOM errors during initial load
+    }
+}
+
+// Appliquer immédiatement si le DOM est prêt, ou attendre l'événement DOMContentLoaded
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', updateLogUIVisibility);
+} else {
+    updateLogUIVisibility();
+}
+// Si true et si l'utilisateur est sous Firefox, on traitera le canal 'metallic'
+// comme une texture sRGB pour tenter d'homogénéiser l'apparence entre navigateurs.
+// (no browser-specific forcing active)
+
+// -----------------------------------------------------------------------------
+// (NOTE) metallic GPU correction removed — kept configuration minimal
+// -----------------------------------------------------------------------------
 
 // Configuration de la gestion des UVs
 let uvSettings = {
@@ -69,6 +140,7 @@ let envirfilename = ['Default_Lit','Env_01_Lit', 'Env_01_UnLit', 'Env_02_Lit', '
 
 // Fonction de logging
 function log(message, type = 'info') {
+    if (!enableLogging) return;
     const logContent = document.getElementById('log-content');
     const logEntry = document.createElement('div');
     const timestamp = new Date().toLocaleTimeString();
@@ -198,13 +270,18 @@ async function scanEnvironmentMaps() {
 
 // Initialisation Three.js
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(backgroundColor);
+scene.background = transparentBackground ? null : new THREE.Color(backgroundColor);
 
-const camera = new THREE.PerspectiveCamera(cameraFov, window.innerWidth / window.innerHeight, cameraNear, cameraFar);
+// Use the #viewer element size for camera aspect and renderer size (frame centered)
+const viewerElement = document.getElementById('viewer');
+const initialWidth = viewerElement.clientWidth || window.innerWidth;
+const initialHeight = viewerElement.clientHeight || window.innerHeight;
+
+const camera = new THREE.PerspectiveCamera(cameraFov, initialWidth / initialHeight, cameraNear, cameraFar);
 camera.position.set(0, 0, 5);
 
-const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threejs-canvas') });
-renderer.setSize(window.innerWidth, window.innerHeight);
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threejs-canvas'), alpha: transparentBackground });
+renderer.setSize(initialWidth, initialHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -212,7 +289,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = unlitMode ? toneMappingUnlit : toneMappingLit;
 renderer.toneMappingExposure = unlitMode ? toneMappingExposureUnlit : toneMappingExposureLit;
 renderer.outputColorSpace = outputColorSpace;
-log(`Renderer configuré: toneMapping=${getToneMappingName(renderer.toneMapping)}, exposure=${renderer.toneMappingExposure}, outputColorSpace=${outputColorSpace}`);
+// rendre la couleur de clear transparente si demandé
+renderer.setClearColor(0x000000, transparentBackground ? 0 : 1);
+// ensure canvas DOM shows transparent background so page background is visible
+if (renderer.domElement) renderer.domElement.style.background = transparentBackground ? 'transparent' : '';
+log(`Renderer configuré: toneMapping=${getToneMappingName(renderer.toneMapping)}, exposure=${renderer.toneMappingExposure}, outputColorSpace=${outputColorSpace}, transparentBackground=${transparentBackground}`);
 
 // Lumières (initialisation avant initializeEnvironment)
 ambientLight = new THREE.AmbientLight(0xffffff, ambientLightIntensity);
@@ -410,12 +491,8 @@ detectModelExtension()
         loadTextures(part, currentColorIndex[part]);
     });
 
-    // Centrer la caméra sur le modèle
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    controls.target.copy(center);
-    camera.lookAt(center);
-    log('Caméra centrée sur le modèle');
+    // Cadre automatique du modèle : utilise les variables initiales (focal length, hauteur, azimut, fill)
+    frameModel(model, { fill: initialCameraFill, azimuthDeg: initialOrbitDeg, cameraHeight: initialCameraHeight, focalLengthMm: initialFocalLengthMm });
     log('Chargement terminé avec succès');
     
     // Charger l'environment map par défaut si en mode Lit
@@ -555,6 +632,10 @@ function loadTextures(part, colorIndex) {
             
             material.needsUpdate = true;
             log(`✓ Matériau ${part} mis à jour`);
+            // Mettre à jour le panneau de preview avec les textures chargées
+            // Sauvegarder temporairement pour le toggle
+            window._lastLoadedTextures = textures;
+            updateTexturePreviewPanel(textures);
         } else {
             log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
         }
@@ -583,8 +664,8 @@ function initializeEnvironment() {
  */
 function applyUnlitEnvironment() {
     // Couleur de fond
-    scene.background = new THREE.Color(backgroundColorUnlit);
-    log(`Environnement Unlit: background=${backgroundColorUnlit.toString(16)}, ambientIntensity=${ambientLightIntensityUnlit}`);
+    scene.background = transparentBackground ? null : new THREE.Color(backgroundColorUnlit);
+    log(`Environnement Unlit: background=${transparentBackground ? 'transparent' : backgroundColorUnlit.toString(16)}, ambientIntensity=${ambientLightIntensityUnlit}`);
     
     // Ajuster l'intensité de la lumière ambiante (équivalent envMapIntensity)
     if (ambientLight) {
@@ -614,7 +695,8 @@ async function applyLitEnvironment() {
                 }
                 
                 scene.environment = envMap;
-                scene.background = envMap;  // Utiliser aussi comme background
+                // Utiliser l'envMap comme background uniquement si on n'a pas demandé la transparence
+                scene.background = transparentBackground ? null : envMap;
                 
                 // Appliquer l'intensité aux matériaux
                 applyEnvMapIntensityToMaterials(envMapIntensity);
@@ -622,19 +704,19 @@ async function applyLitEnvironment() {
                 log(`✓ Environment map appliquée (intensity: ${envMapIntensity}, rotation: ${envMapRotation} rad)`);
             } else {
                 log('✗ Échec chargement environment map, utilisation couleur de fond', 'warning');
-                scene.background = new THREE.Color(backgroundColor);
+                scene.background = transparentBackground ? null : new THREE.Color(backgroundColor);
                 scene.environment = null;
             }
         } catch (error) {
             log(`✗ Erreur environment map: ${error.message}`, 'error');
-            scene.background = new THREE.Color(backgroundColor);
+            scene.background = transparentBackground ? null : new THREE.Color(backgroundColor);
             scene.environment = null;
         }
     } else {
         // Pas d'environment map, utiliser couleur de fond
-        scene.background = new THREE.Color(backgroundColor);
+        scene.background = transparentBackground ? null : new THREE.Color(backgroundColor);
         scene.environment = null;
-        log(`Environnement Lit: background couleur unie (${backgroundColor.toString(16)})`);
+        log(`Environnement Lit: background ${transparentBackground ? 'transparent' : 'couleur unie (0x' + backgroundColor.toString(16) + ')'}`);
     }
 }
 
@@ -761,7 +843,7 @@ async function changeEnvironment(options = {}) {
             useEnvironmentMap = false;
             backgroundColor = color;
             log(`Changement environnement Lit: color=0x${color.toString(16)}`);
-            scene.background = new THREE.Color(color);
+            scene.background = transparentBackground ? null : new THREE.Color(color);
             scene.environment = null;
         }
     }
@@ -963,6 +1045,13 @@ function applyLitMode(material, textures) {
         material.metalnessMap = textures.metallic;
         material.metalness = 1.0;
         log(`  ✓ Metallic appliqué`);
+        // GPU metallic correction removed (injection disabled)
+    }
+    // Roughness (valeur de rugosité fournie directement)
+    if (textures.roughness) {
+        material.roughnessMap = textures.roughness;
+        material.roughness = 1.0; // la map pilote la roughness
+        log(`  ✓ Roughness appliqué`);
     }
     
     // NormalGL (détails de surface)
@@ -996,6 +1085,87 @@ function setupUV2ForAO(material, textures) {
             }
         });
     }
+}
+
+/**
+ * Cadre automatique du modèle : positionne la caméra en vue 3/4 légèrement plongeante
+ * et calcule la distance pour que le modèle occupe environ `fill` de la hauteur visible.
+ * @param {THREE.Object3D} model
+ * @param {Object} options
+ * @param {number} options.fill - fraction de la hauteur de la vue à remplir (0.0-1.0)
+ * @param {number} options.azimuth - angle azimutal autour de Y (radians)
+ * @param {number} options.elevation - angle d'élévation au-dessus de l'horizon (radians)
+ */
+function frameModel(model, options = {}) {
+    const {
+        fill = initialCameraFill,
+        azimuthDeg = initialOrbitDeg, // degrees
+        cameraHeight = initialCameraHeight,
+        focalLengthMm = initialFocalLengthMm
+    } = options;
+
+    if (!model || !camera) return;
+
+    // Si focalLengthMm fourni, appliquer via la méthode Three.js
+    try {
+        if (typeof camera.setFocalLength === 'function' && focalLengthMm) {
+            camera.setFocalLength(focalLengthMm);
+            camera.updateProjectionMatrix();
+        }
+    } catch (e) {
+        // ignore si non supporté
+    }
+
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // Utiliser la plus grande dimension comme hauteur approximative à cadrer
+    const height = Math.max(size.y, size.x, size.z);
+
+    // Convertir FOV vertical en radians après avoir éventuellement appliqué le focal length
+    const fov = (camera.fov || 50) * (Math.PI / 180);
+
+    // Distance (ligne de visée) nécessaire pour que l'objet de hauteur `height` occupe `fill` de la hauteur de la vue
+    const requiredDistance = (height) / (2 * fill * Math.tan(fov / 2));
+
+    // Si l'utilisateur a forcé une distance de zoom (en unités scène, ex: mètres), l'utiliser
+    // `initialZoomDistance` doit être > 0 pour forcer. Sinon on utilise la distance calculée.
+    const forcedDistance = (typeof initialZoomDistance === 'number' && initialZoomDistance > 0) ? initialZoomDistance : requiredDistance;
+
+    // Hauteur verticale souhaitée de la caméra par rapport au centre
+    const dy = cameraHeight;
+
+    // Calcul de la composante horizontale (plan XZ) à partir de la distance utilisée
+    let horizontal = 0;
+    if (forcedDistance > Math.abs(dy)) {
+        horizontal = Math.sqrt(Math.max(0, forcedDistance * forcedDistance - dy * dy));
+    } else {
+        horizontal = 0;
+    }
+
+    const azimuth = (azimuthDeg || 0) * (Math.PI / 180);
+
+    // Log des options de caméra (utile pour debug) — on logue via la fonction `log` (respecte enableLogging)
+    // et via console.info pour garantir visibilité pendant le développement.
+    const distanceSource = (forcedDistance === requiredDistance) ? 'auto' : 'forced';
+    const cameraOptionsMsg = `camera options -> fill=${fill}, focalMm=${focalLengthMm}, cameraHeight=${cameraHeight}, azimuthDeg=${azimuthDeg}, zoomDist=${forcedDistance} (${distanceSource})`;
+    try { log(cameraOptionsMsg); } catch (e) { /* ignore logging errors */ }
+    try { console.info('[CAMERA] ' + cameraOptionsMsg); } catch (e) { /* ignore */ }
+
+    const px = center.x + horizontal * Math.sin(azimuth);
+    const pz = center.z + horizontal * Math.cos(azimuth);
+    const py = center.y + dy;
+
+    camera.position.set(px, py, pz);
+    camera.lookAt(center);
+
+    if (controls) {
+        controls.target.copy(center);
+        controls.update();
+    }
+
+    log(`✓ Modèle cadré (fill=${fill}, azimuthDeg=${azimuthDeg}, cameraHeight=${cameraHeight}, focalMm=${focalLengthMm})`);
 }
 
 // Fonction pour générer les boutons de couleur dynamiquement
@@ -1075,6 +1245,198 @@ function generateEnvironmentSelector() {
     log(`✓ Sélecteur d'environment créé avec ${availableEnvironmentMaps.length} option(s)`);
 }
 
+// -----------------------------------------------------------------------------
+// Panneau dynamique des previews de textures
+// -----------------------------------------------------------------------------
+function createTexturePreviewPanel() {
+    if (!showTexturePreviewPanel) return null;
+    if (document.getElementById(texturePreviewContainerId)) return document.getElementById(texturePreviewContainerId);
+
+    const panel = document.createElement('div');
+    panel.id = texturePreviewContainerId;
+    panel.style.position = 'fixed';
+    panel.style.right = '10px';
+    panel.style.top = '80px';
+    panel.style.width = `${texturePreviewSize + 24}px`;
+    panel.style.maxHeight = '70vh';
+    panel.style.overflowY = 'auto';
+    panel.style.background = 'rgba(0,0,0,0.6)';
+    panel.style.padding = '8px';
+    panel.style.borderRadius = '6px';
+    panel.style.zIndex = '9999';
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.alignItems = 'center';
+    panel.style.gap = '8px';
+    panel.style.color = '#fff';
+
+    const title = document.createElement('div');
+    title.textContent = 'Previews textures';
+    title.style.fontSize = '12px';
+    title.style.marginBottom = '6px';
+    panel.appendChild(title);
+
+    document.body.appendChild(panel);
+    return panel;
+}
+
+function clearTexturePreviewPanel() {
+    const panel = document.getElementById(texturePreviewContainerId);
+    if (panel) panel.parentElement.removeChild(panel);
+}
+
+function setTexturePreviewEnabled(enabled) {
+    showTexturePreviewPanel = !!enabled;
+    if (!showTexturePreviewPanel) {
+        clearTexturePreviewPanel();
+    } else {
+        createTexturePreviewPanel();
+    }
+
+    // Mettre à jour la présence du bouton toggle selon l'option
+    try {
+        const id = 'texture-preview-toggle';
+        const existing = document.getElementById(id);
+        if (showTexturePreviewPanel) {
+            if (!existing) createTexturePreviewToggle();
+        } else {
+            if (existing && existing.parentElement) existing.parentElement.removeChild(existing);
+        }
+    } catch (e) {
+        // ignore
+    }
+}
+
+function updateTexturePreviewPanel(textures) {
+    if (!showTexturePreviewPanel) return;
+    const panel = createTexturePreviewPanel();
+    if (!panel) return;
+    // supprimer les vignettes précédentes (laisser le titre)
+    while (panel.children.length > 1) panel.removeChild(panel.lastChild);
+
+    const entries = Object.keys(textures || {});
+    if (entries.length === 0) {
+        const none = document.createElement('div');
+        none.textContent = 'Aucune texture chargée';
+        none.style.fontSize = '12px';
+        panel.appendChild(none);
+        return;
+    }
+
+    entries.forEach((channel) => {
+        const tex = textures[channel];
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'center';
+
+        const img = document.createElement('img');
+        img.width = texturePreviewSize;
+        img.height = texturePreviewSize;
+        img.style.objectFit = 'cover';
+        img.style.background = '#333';
+        img.style.border = '1px solid rgba(255,255,255,0.08)';
+        img.style.borderRadius = '4px';
+
+        // Déterminer la source à partir de la texture Three.js
+        let src = null;
+        try {
+            if (tex && tex.image) {
+                const imgObj = tex.image;
+                if (imgObj.src) {
+                    src = imgObj.src;
+                } else if (imgObj instanceof HTMLCanvasElement) {
+                    src = imgObj.toDataURL();
+                } else if (typeof ImageBitmap !== 'undefined' && imgObj instanceof ImageBitmap) {
+                    const c = document.createElement('canvas');
+                    c.width = imgObj.width || texturePreviewSize;
+                    c.height = imgObj.height || texturePreviewSize;
+                    c.getContext('2d').drawImage(imgObj, 0, 0);
+                    src = c.toDataURL();
+                } else if (imgObj.data) {
+                    // Tentative pour DataTexture
+                    const w = imgObj.width || texturePreviewSize;
+                    const h = imgObj.height || texturePreviewSize;
+                    const c = document.createElement('canvas');
+                    c.width = w;
+                    c.height = h;
+                    const ctx = c.getContext('2d');
+                    try {
+                        const imageData = ctx.createImageData(w, h);
+                        imageData.data.set(imgObj.data);
+                        ctx.putImageData(imageData, 0, 0);
+                        src = c.toDataURL();
+                    } catch (e) {
+                        src = null;
+                    }
+                }
+            }
+        } catch (e) {
+            src = null;
+        }
+
+        if (!src) {
+            // placeholder simple
+            const placeholder = document.createElement('canvas');
+            placeholder.width = texturePreviewSize;
+            placeholder.height = texturePreviewSize;
+            const pctx = placeholder.getContext('2d');
+            pctx.fillStyle = '#444';
+            pctx.fillRect(0, 0, placeholder.width, placeholder.height);
+            pctx.fillStyle = '#888';
+            pctx.font = '12px sans-serif';
+            pctx.textAlign = 'center';
+            pctx.textBaseline = 'middle';
+            pctx.fillText(channel, placeholder.width / 2, placeholder.height / 2);
+            src = placeholder.toDataURL();
+        }
+
+        img.src = src;
+
+        const label = document.createElement('div');
+        label.textContent = channel;
+        label.style.fontSize = '11px';
+        label.style.marginTop = '6px';
+
+        item.appendChild(img);
+        item.appendChild(label);
+        panel.appendChild(item);
+    });
+}
+
+// Créer un petit bouton toggle pour afficher/masquer le panneau
+function createTexturePreviewToggle() {
+    const id = 'texture-preview-toggle';
+    if (document.getElementById(id)) return;
+    const btn = document.createElement('button');
+    btn.id = id;
+    btn.textContent = 'Textures';
+    btn.style.position = 'fixed';
+    btn.style.right = '10px';
+    btn.style.top = '40px';
+    btn.style.zIndex = '10000';
+    btn.style.padding = '6px 8px';
+    btn.style.borderRadius = '4px';
+    btn.style.border = 'none';
+    btn.style.background = '#222';
+    btn.style.color = '#fff';
+    btn.style.cursor = 'pointer';
+    btn.addEventListener('click', () => {
+        setTexturePreviewEnabled(!showTexturePreviewPanel);
+        if (showTexturePreviewPanel) updateTexturePreviewPanel(window._lastLoadedTextures || {});
+    });
+    document.body.appendChild(btn);
+}
+
+// Initialisation du toggle (créé seulement si l'option est activée)
+if (showTexturePreviewPanel) {
+    createTexturePreviewToggle();
+}
+
+// (no browser forcing UI present)
+
+// Metallic GPU correction UI removed
+
 // Boutons UI
 document.getElementById('fullscreen-btn').addEventListener('click', () => {
     document.getElementById('viewer').requestFullscreen();
@@ -1086,9 +1448,12 @@ document.getElementById('play-btn').addEventListener('click', () => {
 
 // Redimensionnement
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    // Use viewer element size for responsive frame
+    const vw = viewerElement.clientWidth || window.innerWidth;
+    const vh = viewerElement.clientHeight || window.innerHeight;
+    camera.aspect = vw / vh;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(vw, vh);
 });
 
 // Animation loop

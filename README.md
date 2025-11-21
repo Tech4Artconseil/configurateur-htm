@@ -291,3 +291,43 @@ initializeEnvironment();
 ## Dépendances
 - Three.js : https://cdnjs.cloudflare.com/ajax/libs/three.js/r167/three.min.js
 - OrbitControls et GLTFLoader inclus via CDN
+
+## Variables configurables (récapitulatif)
+
+Pour une référence rapide, voici la liste compacte des variables modifiables dans `app.js` (type — valeur par défaut — description) :
+
+### Caméra
+- `cameraFov` (number) — `75` : FOV caméra (degrés)
+- `cameraNear` (number) — `0.1` : Plan near
+- `cameraFar` (number) — `1000` : Plan far
+- `initialFocalLengthMm` (number) — `55` : Focale initiale (mm)
+- `initialCameraHeight` (number) — `1.2` : Hauteur caméra relative au centre du modèle
+- `initialOrbitDeg` (number) — `325` : Azimut initial en degrés
+- `initialZoomDistance` (number|null) — `null` : Distance forcée (null = auto)
+- `initialCameraFill` (number) — `0.7` : Fraction de la hauteur de vue occupée par le modèle
+
+### Rendu / ColorSpace
+- `transparentBackground` (boolean) — `true` : Canvas transparent
+- `backgroundColor` (number) — `0xffffff` : Couleur de fond
+- `toneMappingUnlit` / `toneMappingLit` — Tone mapping pour Unlit / Lit
+- `toneMappingExposureUnlit` / `toneMappingExposureLit` — Exposition
+- `textureColorSpace` / `outputColorSpace` — Color spaces
+
+### Lumières / Environnement
+- `lightIntensity`, `ambientLightIntensity`, `useEnvironmentMap`, `environmentMapPath`, `envMapIntensity`, `envMapRotation`, `backgroundColorUnlit`, `ambientLightIntensityUnlit`, `envirfilename`
+
+### Textures
+- `textureChannels` — objet de configuration par canal (enabled, extensions, flipY)
+
+### UV / Géométrie
+- `uvSettings.autoGenerateUV` — `false`
+- `uvSettings.autoGenerateUV2` — `true`
+
+### Debug / UI
+- `showNormals`, `normalHelperSize`, `normalHelperColor`, `unlitMode`, `emissiveColor`, `emissiveIntensity`, `forceBasicMaterial`
+- `showTexturePreviewPanel`, `texturePreviewSize`, `texturePreviewContainerId`, `enableLogging`
+
+### Modèle & Contrôles
+- `modelName`, `modelExtension`, `productParts`, `materialCodesPerPart`, `currentColorIndex`, `availableEnvironmentMaps`, `autoRotateSpeed`
+
+Modifier ces variables dans `app.js` permet d'ajuster le comportement au démarrage. Si vous souhaitez, j'ajoute également un tableau Markdown complet (variable | type | défaut | description) pour remplacer ce récapitulatif.
