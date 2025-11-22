@@ -1,0 +1,111 @@
+Visionneuse Fauteuil — Panneau d'information
+=============================================
+
+Ce fichier sert de contenu pour le panneau "i" (Afficher / cacher informations).
+Il est chargé par défaut depuis la racine : `left-panel.txt`.
+
+NOTE : l'application affiche actuellement le contenu en tant que texte brut (préformaté)
+via un `<pre>` (le contenu est inséré avec `textContent`). Si vous souhaitez du HTML
+interprété, il faudra modifier `app.js` pour utiliser `innerHTML` (avec nettoyage/sanitation).
+
+-------------------------
+
+1) Exemple simple (paragraphe)
+
+La visionneuse permet de charger un modèle GLB/Gltf et d'appliquer des textures PBR.
+Utilisez le bouton "i" pour ouvrir ce panneau.
+
+-------------------------
+
+2) Titres et sections (Markdown-style)
+
+# Titre principal
+## Sous-titre
+- liste à puces
+- autre élément
+
+3) Emphase (exemples visibles en texte brut et exemples HTML/Markdown montrés littéralement)
+
+Texte normal
+*italique* (Markdown)
+**gras** (Markdown)
+_souligné_ (convention)
+
+HTML (affiché littéralement dans la version actuelle) :
+<strong>Texte en gras</strong>
+<em>Texte en italique</em>
+<u>Texte souligné</u>
+<mark>Texte surligné</mark>
+
+Si `app.js` utilisait `innerHTML`, les balises ci-dessus seraient interprétées.
+
+-------------------------
+
+4) Liste numérotée (exemples)
+
+1. Étape 1 — Préparer les textures
+2. Étape 2 — Charger le modèle
+3. Étape 3 — Vérifier l'affichage
+
+-------------------------
+
+5) Bloc de code (affiché littéralement) — utile pour instructions techniques
+
+```javascript
+// Exemple: appeler la fonction pour charger un fichier texte personnalisé
+window.loadLeftTextFromUrl('docs/notice.txt');
+```
+
+6) Table / alignement (ASCII)
+
+| Clé                 | Valeur               |
+|---------------------|----------------------|
+| modelName           | fauteuil             |
+| initialCameraFill   | 0.7                  |
+| textureLoadStrategy | 'B' (fetch->blob->img)|
+
+7) Petit changelog
+
+- 2025-11-22 : Ajout du panneau d'info et du chargement `left-panel.txt`
+- 2025-11-20 : Amélioration du chargement textures (strategies B/C)
+
+8) Emoji / repères visuels
+
+ℹ️  — Informations
+⚠️  — Avertissement
+✅  — OK
+
+9) Exemple d'inclusion d'image (Markdown / HTML - affiché littéralement)
+
+Markdown : ![miniature](Textures/environement/Default_thumb.jpg)
+HTML     : <img src="Textures/environement/Default_thumb.jpg" alt="thumb" />
+
+10) Contact rapide & licence
+
+Auteur : Jean-Baptiste BARON — Tech4Art Conseil
+Contact : tech4artconseil@gmail.com
+
+Licence : code propriétaire — tous droits réservés.
+
+-------------------------
+
+Conseils pratiques
+- Placez ce fichier `left-panel.txt` à la racine du projet (même dossier que `index.html`).
+- Encodage recommandé : UTF-8 (pour accents et symboles)
+- Si vous préférez HTML rendu, changez la ligne
+  `pre.textContent = txt;` en `contentDiv.innerHTML = sanitize(txt);`
+  (ajoutez une fonction `sanitize` ou utilisez une librairie de sanitation pour éviter les XSS).
+
+Exemples supplémentaires
+- Vous pouvez copier-coller ci-dessus une section Markdown pour la modifier rapidement.
+- Pour de la documentation riche, créez `docs/notice.md` et appelez
+  `window.loadLeftTextFromUrl('docs/notice.md');`
+
+---
+Fin du fichier d'exemple — modifiez librement pour vos besoins.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.

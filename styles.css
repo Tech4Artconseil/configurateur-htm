@@ -26,10 +26,19 @@ body {
     height: 100vh;
 }
 
+/* Prevent horizontal scroll and use border-box sizing everywhere to avoid
+   accidental overflow from padding/margins. */
+html {
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+*, *:before, *:after { box-sizing: inherit; }
+
 /* Le viewer devient un frame centré qui occupe 80% de la fenêtre */
 #viewer {
     position: relative;
-    width: 80vw;
+    /* keep viewer within viewport on small screens to avoid horizontal scroll */
+    width: min(80vw, 1400px);
     height: 80vh;
     max-width: 1400px;
     max-height: 900px;
@@ -65,13 +74,23 @@ body {
 /* Top bar: transparent background as requested */
 #top-bar {
     display: flex;
-    justify-content: center;
+    justify-content: space-between; /* distribute groups: left / center / right */
     align-items: center;
     background: transparent; /* rendre la barre transparente */
-    padding: 8px;
+    padding: 18px 12px; /* vertical + horizontal padding */
     pointer-events: auto;
     gap: 8px;
 }
+
+/* Button group containers inside the top bar */
+.btn-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-left { justify-content: flex-start; }
+.btn-center { justify-content: center; }
+.btn-right { justify-content: flex-end; }
 
 /* UI buttons : rond, bordure noire, icône/texte noir, fond transparent */
 button {
@@ -161,23 +180,37 @@ button:hover {
 }
 .color-dropdown.open .color-dropdown-menu { display: flex; }
 .color-swatch-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.6);
+    width: 40px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.06);
     background: transparent;
-    padding: 0;
+    padding: 6px 4px;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     cursor: pointer;
 }
 .color-swatch-btn .swatch {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background-size: cover;
     background-position: center center;
+}
+
+.swatch-code-label {
+    font-size: 10px;
+    color: #111;
+    line-height: 1;
+}
+
+.env-thumb-code {
+    font-size: 11px;
+    color: #111;
+    line-height: 1.1;
 }
 
 /* Environment dropdown (visual list of thumbnails) */
@@ -220,7 +253,7 @@ button:hover {
     box-shadow: 0 6px 22px rgba(0,0,0,0.12);
     z-index: 3000;
     width: auto; /* s'ajuste au contenu */
-    min-width: 220px; /* largeur minimale pour bonne lisibilité */
+    min-width: 20px; /* largeur minimale pour bonne lisibilité */
     max-width: 480px; /* limiter l'explosion sur grands écrans */
     border-radius: 10px;
 }
@@ -301,8 +334,8 @@ body.show-logs #log-panel, body.show-logs #log-content { display: block; }
     position: absolute;
     left: 12px;
     top: 48px;
-    width: 28%;
-    max-width: 420px;
+    /* responsive width: prefer 28% up to 420px, shrink on small screens */
+    width: min(28%, 420px);
     height: 70%;
     background: rgba(255,255,255,0.92);
     color: #000;
@@ -312,6 +345,22 @@ body.show-logs #log-panel, body.show-logs #log-content { display: block; }
     overflow-y: auto;
     display: none; /* toggled by JS */
     z-index: 10001;
+}
+
+/* On small screens, make the left panel full-width-ish and avoid horizontal scroll */
+@media (max-width: 800px) {
+    #left-text-panel {
+        width: 90vw;
+        left: 5vw;
+        top: 80px;
+        max-width: calc(100% - 20px);
+        height: 60vh;
+    }
+    #viewer {
+        width: calc(100vw - 20px);
+        height: 65vh;
+        max-width: calc(100% - 20px);
+    }
 }
 
 #left-text-panel .panel-close {

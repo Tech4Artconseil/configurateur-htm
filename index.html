@@ -17,18 +17,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visionneuse Fauteuil 3D</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
 </head>
 <body>
     <div id="viewer">
         <canvas id="threejs-canvas"></canvas>
         <div id="ui">
             <div id="top-bar">
-                <button id="fullscreen-btn">⛶</button>
-                <button id="play-btn">▶</button>
-                <select id="environment-selector">
-                    <option value="none">Chargement...</option>
-                </select>
-                <div id="color-buttons"></div>
+                <div class="btn-group btn-left">
+                    <button id="fullscreen-btn">⛶</button>
+                    <button id="play-btn">▶</button>
+                </div>
+
+                <div class="btn-group btn-center">
+                    <select id="environment-selector">
+                        <option value="none">Chargement...</option>
+                    </select>
+                    <div id="color-buttons"></div>
+                </div>
+
+                <div class="btn-group btn-right">
+                    <!-- right-group reserved for future top-bar controls -->
+                </div>
             </div>
         </div>
         <div id="log-panel">

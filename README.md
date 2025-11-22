@@ -404,6 +404,20 @@ Pour une référence rapide, voici la liste compacte des variables modifiables d
 ### Textures
 - `textureChannels` — objet de configuration par canal (enabled, extensions, flipY)
 
+#### Stratégie de chargement des textures
+- `textureLoadStrategy` (string) — `'B'` : Stratégie par défaut (`'B'` = fetch -> blob -> `HTMLImageElement`) ; option `'C'` = canvas + prémultiplication manuelle
+- `texturePremultiplyOnCanvas` (boolean) — `false` : lorsque `textureLoadStrategy === 'C'`, indique si l'on doit appliquer la prémultiplication (RGB * A) côté CPU
+- `textureForcePremultiply` (boolean) — `false` : lorsque `textureLoadStrategy === 'B'`, indique si l'on demande au GPU d'appliquer `premultiplyAlpha = true` sur la `THREE.Texture`
+- `window.setTextureLoadStrategy('B'|'C')` — fonction exposée pour basculer la stratégie à l'exécution
+- `window.setTexturePremultiplyOnCanvas(true|false)` — toggle exposé pour la prémultiplication côté canvas
+- `window.setTextureForcePremultiply(true|false)` — toggle exposé pour forcer `premultiplyAlpha` côté GPU
+
+Ces variables permettent de contrôler la manière dont les images sont chargées et uploadées en GPU afin d'éviter les warnings WebGL relatifs à `flipY` / `premultiplyAlpha` et d'autoriser un traitement pixel-wise si nécessaire.
+
+#### Swatches / Miniatures
+- `_swatchLookupCache` — (internal) `Map` en mémoire pour mettre en cache les URL de vignettes côté serveur
+- `findSwatchForMaterial(folderPath, materialCode)` — helper asynchrone qui recherche des miniatures côté serveur en priorisant `*_thumb` puis un fallback `_Swatch` et lisant `index.json` au besoin
+
 ### UV / Géométrie
 - `uvSettings.autoGenerateUV` — `false`
 - `uvSettings.autoGenerateUV2` — `true`
@@ -411,6 +425,60 @@ Pour une référence rapide, voici la liste compacte des variables modifiables d
 ### Debug / UI
 - `showNormals`, `normalHelperSize`, `normalHelperColor`, `unlitMode`, `emissiveColor`, `emissiveIntensity`, `forceBasicMaterial`
 - `showTexturePreviewPanel`, `texturePreviewSize`, `texturePreviewContainerId`, `enableLogging`
+- `enableTextureLogging` (boolean) — `false` : contrôle les logs relatifs au chargement/gestion des textures (les messages ne s'affichent que si `enableLogging && enableTextureLogging`)
+
+#### Labels circulaires (defaults)
+- `CIRCULAR_LABEL_DEFAULTS_ENV` — objet global de defaults pour le label circulaire des environnements (`fontSize`, `radius`, `startOffset`, `color`, `textAnchor`, `startAt`, `direction`)
+- `CIRCULAR_LABEL_DEFAULTS_COLOR` — objet global de defaults pour les labels circulaires des boutons de couleur (mêmes champs)
+- `window.setCircularLabelOptions(options)` — helper exposé pour appliquer ces options à chaud
+- `window.setEnvToggleLabelOptions(options)` — alias spécifique pour le toggle d'environnement
+
+### Nouveaux toggles et compatibilité cross-browser
+
+Le rendu du texte le long d'un `textPath` peut varier légèrement entre navigateurs (Firefox vs Chromium/WebKit). Pour obtenir un rendu visuel cohérent, le code initialise désormais plusieurs valeurs par défaut en fonction du navigateur, et expose des toggles globaux pour forcer ou ajuster le comportement à chaud.
+
+Principaux flags exposés :
+
+- `window._invertCircularText` (boolean) — si `true`, inverse la direction calculée pour l'écriture le long du chemin (utile pour forcer l'affichage si votre navigateur montre le texte « à l'envers`).
+- `window._enableSweepFlag` (boolean) — si `false`, le `sweepFlag` utilisé pour construire l'arc est fixé et la logique de flip automatique est désactivée.
+- `window._enableBottomRotation` (boolean) — si `false`, la transformation `rotate(180 50 50)` appliquée lorsque `startAt === 'bottom'` est ignorée.
+
+Direction intégrée aux defaults navigateur
+
+Pour centraliser la configuration par navigateur, la propriété `direction` (`'cw'` | `'ccw'`) est maintenant intégrée dans la table `_browserDefaults` du code. Au démarrage, le script détecte un navigateur de base (Firefox / Chrome / Edge / Safari / other) via `navigator.userAgent` et applique la ligne de defaults correspondante. Cela permet d'avoir simultanément des valeurs par défaut pour `invertCircularText`, `enableSweepFlag`, `enableBottomRotation` et `direction` (sens d'écriture le long du cercle).
+
+API runtime pour ajuster le comportement
+
+Pour modifier ces valeurs à chaud, utilisez l'helper suivant exposé dans la page :
+
+```javascript
+// Appliquer de nouveaux réglages à chaud
+window.setCircularLabelBehavior({
+  invertCircularText: false,       // true/false
+  enableSweepFlag: true,           // true/false
+  enableBottomRotation: false      // true/false
+});
+
+// La fonction logge et retourne l'état appliqué :
+// { browser: 'chrome'|'firefox'|'edge'|'safari'|'other', invertCircularText, enableSweepFlag, enableBottomRotation }
+```
+
+Le helper ne force rien de façon irréversible : si vous préférez définir explicitement un flag avant que `app.js` soit exécuté (par exemple via un script inline dans `index.html`), la valeur fournie sera respectée et ne sera pas écrasée par les defaults détectés.
+
+Exemples rapides (console) :
+
+```javascript
+// Forcer l'inversion visuelle
+window.setCircularLabelBehavior({ invertCircularText: true });
+
+// Désactiver l'usage du sweepFlag
+window.setCircularLabelBehavior({ enableSweepFlag: false });
+
+// Activer la rotation bottom
+window.setCircularLabelBehavior({ enableBottomRotation: true });
+```
+
+Remarque : si vous préférez une méthode « feature-detection » plus fiable que l'User-Agent (test visuel SVG pour déduire le comportement réel), l'équipe peut ajouter un petit test runtime qui mesure l'affichage et règle automatiquement ces flags — dites-le si vous voulez que je l'implémente.
 
 ### Modèle & Contrôles
 - `modelName`, `modelExtension`, `productParts`, `materialCodesPerPart`, `currentColorIndex`, `availableEnvironmentMaps`, `autoRotateSpeed`
@@ -420,6 +488,31 @@ Modifier ces variables dans `app.js` permet d'ajuster le comportement au démarr
 ---
 
 ## Aide : options des labels circulaires (texte autour des boutons)
+
+## Chargement des textures — stratégie DOM vs Canvas
+
+Le player implémente aujourd'hui une stratégie par défaut pour charger les images de textures qui privilégie la compatibilité et la conformité aux normes modernes :
+
+- Stratégie par défaut : **B (fetch -> blob -> HTMLImageElement)**.
+  - Le code récupère l'image via `fetch` (Blob), crée un `HTMLImageElement` via `URL.createObjectURL(blob)` et construit la `THREE.Texture` à partir de cet élément DOM.
+  - Avantages : évite les warnings WebGL liés à `flipY` et `premultiplyAlpha` pour les sources non-DOM, respecte les conventions récentes des navigateurs, et reste léger côté client (pas de traitement pixel-wise coûteux).
+  - C'est la stratégie recommandée si vous souhaitez garder le player polyvalent et léger tout en conservant la possibilité d'utiliser `flipY` et la prémultiplication alpha côté GPU.
+
+- Stratégie optionnelle : **C (canvas + prémultiplication)**.
+  - Le code dessine l'image dans un `<canvas>` DOM et peut appliquer une prémultiplication manuelle (RGB * A) sur les pixels avant d'assigner le canvas à la `THREE.Texture`.
+  - Avantages : permet de forcer la prémultiplication côté client et de contrôler précisément les pixels. Utile pour cas particuliers (petites images, workflows spécifiques).
+  - Inconvénients : opération coûteuse en CPU (getImageData / putImageData) pour de grandes textures, et soumise aux restrictions CORS (si l'image est "tainted", `getImageData` échouera).
+
+Comment basculer et configurer
+- Variables globales exposées depuis `app.js` :
+  - `window.setTextureLoadStrategy('B'|'C')` : choisis la stratégie (par défaut `'B'`).
+  - `window.setTexturePremultiplyOnCanvas(true|false)` : lorsque stratégie `'C'` est active, indique s'il faut appliquer la prémultiplication manuelle sur le canvas.
+  - `window.setTextureForcePremultiply(true|false)` : lorsque stratégie `'B'` est active, indique si la texture doit demander au GPU d'appliquer la prémultiplication (`premultiplyAlpha = true`).
+
+Pourquoi ce choix pour ce projet
+- Respect des contraintes : la stratégie **B** permet de garder un player léger et polyvalent tout en évitant les pratiques dépréciées (warning WebGL) et en permettant flipY/premultiply quand le serveur fournit des images standards servies avec CORS.
+- Extensibilité : la stratégie **C** est maintenue et activable au besoin (option pour scénarios où la prémultiplication doit être forcée côté client ou pour de petits assets nécessitant un traitement pixel-wise).
+- Meilleure pratique recommandée : si possible, préparer/pre-filtrer les textures côté serveur (KTX2, Basis, PMREM) — voir la section "Améliorations futures" — pour un rendu optimal (performance et qualité).
 
 Cette section documente les options disponibles pour contrôler les textes circulaires générés autour des boutons (sélecteurs d'environnement et boutons de couleur).
 

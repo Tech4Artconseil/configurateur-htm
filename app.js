@@ -83,16 +83,18 @@ const texturePreviewContainerId = 'texture-preview-panel';
 
 // Activer/désactiver l'affichage des logs dans le viewer (true = logs activés)
 let enableLogging = false;
+// Activer/désactiver les logs spécifiques au chargement/gestion des textures
+let enableTextureLogging = true;
 
 // Met à jour la visibilité de l'UI de logs selon `enableLogging`.
 function updateLogUIVisibility() {
     try {
         // Utiliser une classe sur <body> pour contrôler l'affichage via CSS (évite le flash)
-        if (enableLogging) {
-            document.body.classList.add('show-logs');
-        } else {
-            document.body.classList.remove('show-logs');
-        }
+            if (enableLogging) {
+                document.body.classList.add('show-logs');
+            } else {
+                document.body.classList.remove('show-logs');
+            }
 
         // Fallback : si l'élément existe et que le dev veut forcer le style, appliquer quand même
         const logContent = document.getElementById('log-content');
@@ -161,9 +163,62 @@ let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.
 let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
 let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
 let envirfilename = ['Default','Env_01', 'Env_02'];
+// Browser-aware defaults for circular label helpers (modifiable at runtime)
+// Detect basic browser family to normalize text direction across Firefox/Chrome/Safari
+const _isFirefox = typeof navigator !== 'undefined' && /Firefox\//i.test(navigator.userAgent);
+// preferredDirection: Firefox tends to render textPath direction matching 'ccw' visually,
+// Chromium/WebKit often appear reversed — choose direction to make visual result consistent.
+// Global runtime toggles (exposed for debugging/override)
+// Defaults now depend on the detected browser. If you want to force values
+// from outside this script, set the corresponding `window._*` variable before
+// this file is executed (or call `setCircularLabelBehavior()` at runtime).
+const _ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+const _isChrome = /Chrome\//i.test(_ua) && !/Edg\//i.test(_ua) && !/OPR\//i.test(_ua) && !/Chromium\//i.test(_ua);
+const _isEdge = /Edg(e|A|iOS)?\//i.test(_ua) || /Edge\//i.test(_ua);
+const _isSafari = /Safari\//i.test(_ua) && !/Chrome\//i.test(_ua) && !/Chromium\//i.test(_ua) && !/Android/i.test(_ua);
+// _isFirefox already exists above as `_isFirefox` — reuse when available
+const _detectedBrowser = _isFirefox ? 'firefox' : (_isChrome ? 'chrome' : (_isEdge ? 'edge' : (_isSafari ? 'safari' : 'other')));
+
+const _browserDefaults = {
+    firefox: { invertCircularText: true, enableSweepFlag: true,  enableBottomRotation: false, direction: 'cw', rotationDeg: 90, showCodeLabel: true, codeLabelFormat: '${code}' },
+    chrome:  { invertCircularText: true,  enableSweepFlag: true,  enableBottomRotation: false, direction: 'cw',  rotationDeg: 0,  showCodeLabel: true, codeLabelFormat: '${code}' },
+    edge:    { invertCircularText: true,  enableSweepFlag: true,  enableBottomRotation: false, direction: 'cw',  rotationDeg: 0,  showCodeLabel: true, codeLabelFormat: '${code}' },
+    safari:  { invertCircularText: true,  enableSweepFlag: false, enableBottomRotation: false, direction: 'cw',  rotationDeg: 0,  showCodeLabel: true, codeLabelFormat: '${code}' },
+    other:   { invertCircularText: true,  enableSweepFlag: true,  enableBottomRotation: false, direction: 'cw',  rotationDeg: 0,  showCodeLabel: true, codeLabelFormat: '${code}' }
+};
+
+const _defaults = _browserDefaults[_detectedBrowser] || _browserDefaults.other;
+
+// Only set defaults if the window flags are not already defined (allows manual override)
+if (typeof window._invertCircularText === 'undefined') window._invertCircularText = !!_defaults.invertCircularText;
+if (typeof window._enableSweepFlag === 'undefined') window._enableSweepFlag = !!_defaults.enableSweepFlag;
+if (typeof window._enableBottomRotation === 'undefined') window._enableBottomRotation = !!_defaults.enableBottomRotation;
+// expose a browser-dependent default rotation value
+if (typeof window._circularRotationDeg === 'undefined') window._circularRotationDeg = Number(_defaults.rotationDeg || 0);
+
+// Expose a small helper to change the behavior at runtime (console-friendly)
+window.setCircularLabelBehavior = (opts = {}) => {
+    if (typeof opts.invertCircularText !== 'undefined') window._invertCircularText = !!opts.invertCircularText;
+    if (typeof opts.enableSweepFlag !== 'undefined') window._enableSweepFlag = !!opts.enableSweepFlag;
+    if (typeof opts.enableBottomRotation !== 'undefined') window._enableBottomRotation = !!opts.enableBottomRotation;
+    if (typeof opts.rotationDeg !== 'undefined') window._circularRotationDeg = Number(opts.rotationDeg) || 0;
+    console.log('circularLabelBehavior:', {
+        browser: _detectedBrowser,
+        invertCircularText: window._invertCircularText,
+        enableSweepFlag: window._enableSweepFlag,
+        enableBottomRotation: window._enableBottomRotation
+    });
+    return {
+        browser: _detectedBrowser,
+        invertCircularText: window._invertCircularText,
+        enableSweepFlag: window._enableSweepFlag,
+        enableBottomRotation: window._enableBottomRotation
+    };
+};
+
 // Global defaults for circular label helpers (modifiable at runtime)
-const CIRCULAR_LABEL_DEFAULTS_ENV = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
-const CIRCULAR_LABEL_DEFAULTS_COLOR = { fontSize: 24, radius: 64, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: 'ccw' };
+const CIRCULAR_LABEL_DEFAULTS_ENV = { fontSize: 32, radius: 72, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: _defaults.direction, rotationDeg: _defaults.rotationDeg || 0, showCodeLabel: !!_defaults.showCodeLabel, codeLabelFormat: _defaults.codeLabelFormat || '${code}' };
+const CIRCULAR_LABEL_DEFAULTS_COLOR = { fontSize: 32, radius: 72, startOffset: '2%', color: '#242323ff', textAnchor: 'start', startAt: 'bottom', direction: _defaults.direction, rotationDeg: _defaults.rotationDeg || 0, showCodeLabel: !!_defaults.showCodeLabel, codeLabelFormat: _defaults.codeLabelFormat || '${code}' };
 
 // NOTE: helper functions and their runtime calls have been moved
 // down next to the UI generation code (generateEnvironmentSelector / generateColorButtons)
@@ -183,6 +238,12 @@ function log(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
+// Texture-specific logger: only logs when global logging is enabled AND texture logging enabled
+function textureLog(message, type = 'info') {
+    if (!enableLogging || !enableTextureLogging) return;
+    log(message, type);
+}
+
 log('Initialisation de la visionneuse 3D...');
 
 // Variables pour les lumières (déclarées globalement avant leur utilisation)
@@ -192,7 +253,7 @@ let directionalLight;
 // Variables pour le produit
 let modelName = 'fauteuil'; // Nom du modèle, sans extension
 let modelExtension = null; // Extension détectée automatiquement (glb ou gltf)
-let productParts = ['Pied', 'Assise']//, "Autre"]; // Tableau des parties configurables du produit
+let productParts = ['Pied', 'Assise']//,'Autre']; // Tableau des parties configurables du produit
 // Codes de matériaux disponibles par partie (détectés automatiquement)
 let materialCodesPerPart = {};
 let currentColorIndex = {}; // Index dans le tableau de codes
@@ -368,6 +429,60 @@ async function findEnvThumbnail(basePath, baseName) {
         if (await checkImageExists(p)) return p;
     }
     return null;
+}
+
+// Texture loading strategy globals
+// 'B' = fetch -> blob -> HTMLImageElement (default, lightweight, avoids WebGL warnings)
+// 'C' = draw into canvas and optionally premultiply pixels (fallback / heavier)
+let textureLoadStrategy = 'B';
+let texturePremultiplyOnCanvas = false; // when using 'C', whether to premultiply manually
+let textureForcePremultiply = false; // when using 'B', whether to set premultiplyAlpha on the texture
+
+window.setTextureLoadStrategy = (s) => { textureLoadStrategy = s; };
+window.setTexturePremultiplyOnCanvas = (b) => { texturePremultiplyOnCanvas = !!b; };
+window.setTextureForcePremultiply = (b) => { textureForcePremultiply = !!b; };
+
+// Utility: load image as a DOM HTMLImageElement via fetch->blob->objectURL
+async function loadImageAsDOM(url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Fetch failed: ' + resp.status);
+    const blob = await resp.blob();
+    return await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { resolve(img); URL.revokeObjectURL(img.src); };
+        img.onerror = (e) => { try { URL.revokeObjectURL(img.src); } catch (er) {} reject(e); };
+        img.src = URL.createObjectURL(blob);
+    });
+}
+
+// Utility: draw an image into a canvas and optionally premultiply alpha (costly)
+function imageToCanvasWithOptionalPremult(img, doPremultiply = false) {
+    const w = img.width || 1;
+    const h = img.height || 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0, w, h);
+    if (doPremultiply) {
+        try {
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const a = data[i + 3] / 255;
+                data[i] = Math.round(data[i] * a);
+                data[i + 1] = Math.round(data[i + 1] * a);
+                data[i + 2] = Math.round(data[i + 2] * a);
+            }
+            ctx.putImageData(imageData, 0, 0);
+        } catch (e) {
+            // getImageData can fail if the image is tainted (CORS). In that case, return the canvas as-is.
+            console.warn('Premultiplication failed (CORS or large image):', e);
+        }
+    }
+    return canvas;
 }
 
 // Initialisation Three.js
@@ -586,11 +701,17 @@ detectModelExtension()
     });
     log('=== FIN ANALYSE ===');
 
-    // Charger les textures initiales pour chaque partie
-    productParts.forEach(part => {
-        const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
-        log(`Chargement des textures pour: ${part} (matériau ${materialCode})`);
-        loadTextures(part, currentColorIndex[part]);
+    // Charger les textures initiales pour chaque partie (attendre puis charger les dossiers additionnels)
+    const initialLoadPromises = productParts.map(part => {
+        const materialCode = materialCodesPerPart[part] && materialCodesPerPart[part][currentColorIndex[part]] ? materialCodesPerPart[part][currentColorIndex[part]] : (materialCodesPerPart[part] ? materialCodesPerPart[part][0] : null);
+        textureLog(`Chargement des textures pour: ${part} (matériau ${materialCode})`);
+        return loadTextures(part, currentColorIndex[part]).catch(e => { log(`Erreur chargement textures pour ${part}: ${e && e.message ? e.message : e}`, 'warning'); return null; });
+    });
+
+    Promise.all(initialLoadPromises).then(() => {
+        // Après avoir chargé les textures pour les parties configurées, tenter de charger d'autres dossiers listés
+        // dans un index.json au niveau du dossier produit (Textures/<modelName>/index.json)
+        loadOtherTextureFoldersAndApply().catch(err => { log(`Erreur lors du chargement des dossiers additionnels: ${err && err.message ? err.message : err}`, 'warning'); });
     });
 
     // Cadre automatique du modèle : utilise les variables initiales (focal length, hauteur, azimut, fill)
@@ -623,10 +744,29 @@ detectModelExtension()
 });
 
 // Fonction pour charger les textures
-function loadTextures(part, colorIndex) {
+// Retourne une Promise résolvant sur l'objet `textures` (ou null si échec)
+async function loadTextures(part, colorIndex) {
     const textureLoader = new THREE.TextureLoader();
-    const rawMaterialCode = materialCodesPerPart[part][colorIndex];
-    const materialCode = normalizeMaterialCode(rawMaterialCode);
+
+    // Si le dossier a un index.json local, tenter de le lire pour récupérer les codes
+    try {
+        if (!materialCodesPerPart[part]) {
+            const idxResp = await fetch(`Textures/${modelName}/${part}/index.json`);
+            if (idxResp.ok) {
+                const data = await idxResp.json();
+                if (data && Array.isArray(data.codes) && data.codes.length > 0) {
+                    materialCodesPerPart[part] = data.codes;
+                    currentColorIndex[part] = 0;
+                    log(`✓ Codes chargés pour ${part} depuis ${modelName}/${part}/index.json: ${data.codes.join(', ')}`);
+                }
+            }
+        }
+    } catch (e) {
+        // ignore index.json errors
+    }
+
+    const rawMaterialCode = (materialCodesPerPart[part] && materialCodesPerPart[part][colorIndex]) ? materialCodesPerPart[part][colorIndex] : (materialCodesPerPart[part] && materialCodesPerPart[part][0]) ? materialCodesPerPart[part][0] : null;
+    const materialCode = normalizeMaterialCode(rawMaterialCode || '');
     const basePath = `Textures/${modelName}/${part}/Color_${materialCode}_`;
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
@@ -644,29 +784,68 @@ function loadTextures(part, colorIndex) {
                 const ext = extensions[attemptIndex];
                 const path = `${basePath}${name}.${ext}`;
                 
-                const texture = textureLoader.load(
-                    path,
-                    // onLoad
-                    (loadedTexture) => {
-                        loadedTexture.flipY = flipY;
-                        // Appliquer le colorSpace approprié selon le type de texture
-                        if (name.toLowerCase().includes('albedo') || name.toLowerCase().includes('emission')) {
-                            loadedTexture.colorSpace = textureColorSpace;
+                // Preferred approach: try to fetch as blob -> HTMLImageElement so we upload from a DOM element
+                (async () => {
+                    try {
+                        const img = await loadImageAsDOM(path);
+                        let texImage = null;
+                        if (textureLoadStrategy === 'C') {
+                            // draw into canvas and optionally premultiply
+                            const canvas = imageToCanvasWithOptionalPremult(img, texturePremultiplyOnCanvas);
+                            texImage = canvas;
                         } else {
-                            // Textures de données (normal, metallic, roughness, ao, height) en linéaire
-                            loadedTexture.colorSpace = THREE.LinearSRGBColorSpace;
+                            // Strategy B: use the HTMLImageElement directly
+                            texImage = img;
                         }
-                        log(`✓ Texture chargée: Color_${materialCode}_${name}.${ext} (flipY: ${flipY}, colorSpace: ${loadedTexture.colorSpace})`);
-                        resolve(loadedTexture);
-                    },
-                    // onProgress
-                    undefined,
-                    // onError
-                    () => {
-                        attemptIndex++;
-                        tryLoad();
+
+                        const t = new THREE.Texture(texImage);
+                        // Apply flipY as requested (DOM uploads support flipY)
+                        t.flipY = flipY;
+
+                        // Apply premultiplication policy
+                        if (textureLoadStrategy === 'C' && texturePremultiplyOnCanvas) {
+                            // we already premultiplied pixels on canvas -> do not ask GPU to premultiply
+                            t.premultiplyAlpha = false;
+                        } else {
+                            // delegate premultiply to GL if requested globally
+                            t.premultiplyAlpha = !!textureForcePremultiply;
+                        }
+
+                        // Color space decision
+                        if (name.toLowerCase().includes('albedo') || name.toLowerCase().includes('emission')) {
+                            t.colorSpace = textureColorSpace;
+                        } else {
+                            t.colorSpace = THREE.LinearSRGBColorSpace;
+                        }
+
+                        t.needsUpdate = true;
+                        textureLog(`✓ Texture chargée (via fetch->img): Color_${materialCode}_${name}.${ext} (flipY: ${t.flipY}, colorSpace: ${t.colorSpace})`);
+                        resolve(t);
+                        return;
+                    } catch (e) {
+                        // fetch/objectURL or img creation failed -> fallback to TextureLoader
                     }
-                );
+
+                    // fallback: try the default TextureLoader (this will handle caching and decoding)
+                    textureLoader.load(
+                        path,
+                        (loadedTexture) => {
+                            loadedTexture.flipY = flipY;
+                            if (name.toLowerCase().includes('albedo') || name.toLowerCase().includes('emission')) {
+                                loadedTexture.colorSpace = textureColorSpace;
+                            } else {
+                                loadedTexture.colorSpace = THREE.LinearSRGBColorSpace;
+                            }
+                            textureLog(`✓ Texture chargée (fallback): Color_${materialCode}_${name}.${ext} (flipY: ${flipY}, colorSpace: ${loadedTexture.colorSpace})`);
+                            resolve(loadedTexture);
+                        },
+                        undefined,
+                        () => {
+                            attemptIndex++;
+                            tryLoad();
+                        }
+                    );
+                })();
             }
             
             tryLoad();
@@ -680,16 +859,16 @@ function loadTextures(part, colorIndex) {
     Object.entries(textureChannels).forEach(([channel, config]) => {
         if (config.enabled) {
             // Capitaliser la première lettre pour le nom de fichier
-            const channelName = channel.charAt(0).toUpperCase() + channel.slice(1);
+                const channelName = channel.charAt(0).toUpperCase() + channel.slice(1);
             texturePromises.push(loadTextureWithFallback(channelName, config.extensions, config.flipY));
             enabledChannels.push(channel);
-            log(`  → Chargement ${channel} activé (flipY: ${config.flipY})`);
+                textureLog(`  → Chargement ${channel} activé (flipY: ${config.flipY})`);
         } else {
-            log(`  ⊘ Chargement ${channel} désactivé`, 'info');
+                textureLog(`  ⊘ Chargement ${channel} désactivé`, 'info');
         }
     });
     
-    Promise.all(texturePromises).then((loadedTextures) => {
+    return Promise.all(texturePromises).then((loadedTextures) => {
         // Créer un objet avec les textures chargées
         const textures = {};
         enabledChannels.forEach((channel, index) => {
@@ -697,29 +876,54 @@ function loadTextures(part, colorIndex) {
         });
 
         // Assigner aux matériaux
-        const material = materials[part];
-        if (material) {
-            log(`Application des textures sur matériau: ${part} (mode: ${unlitMode ? 'Unlit' : 'Lit'})`);
-            
-            // Appliquer le mode Unlit ou Lit
-            applyMaterialMode(material, textures);
-            
-            // Vérifier et générer les UVs si nécessaire
+        // Pour éviter de ne mettre à jour qu'une seule instance de matériau (cas où plusieurs
+        // objets ont des instances de matériaux distinctes mais portant le même nom),
+        // on applique maintenant les textures à toutes les instances de matériau dont
+        // le nom correspond à la partie (comparaison insensible à la casse).
+        const appliedMaterials = [];
+        try {
+            model.traverse((child) => {
+                if (!child.isMesh) return;
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach((mat) => {
+                    if (!mat || !mat.name) return;
+                    try {
+                        if (String(mat.name).toLowerCase() === String(part).toLowerCase()) {
+                            applyMaterialMode(mat, textures);
+                            mat.needsUpdate = true;
+                            appliedMaterials.push(mat);
+                        }
+                    } catch (e) {
+                        // ignore per-material errors
+                    }
+                });
+            });
+        } catch (e) {
+            // traversal error
+            log(`Erreur lors de l'application des textures sur les matériaux: ${e && e.message ? e.message : e}`, 'warning');
+        }
+
+        if (appliedMaterials.length > 0) {
+            log(`✓ Textures appliquées sur ${appliedMaterials.length} matériau(x) correspondant(s) à: ${part}`);
+
+            // Utiliser la première instance trouvée pour les traitements qui nécessitent
+            // une référence unique (génération d'UV, setup UV2 pour AO, maj des swatchs UI)
+            const materialForHelpers = appliedMaterials[0];
+
+            // Vérifier et générer les UVs si nécessaire (utiliser materialForHelpers pour la détection)
             if (uvSettings.autoGenerateUV) {
                 let hasUVs = false;
                 model.traverse((child) => {
                     if (child.isMesh) {
                         const mats = Array.isArray(child.material) ? child.material : [child.material];
-                        if (mats.includes(material)) {
+                        if (mats.includes(materialForHelpers)) {
                             hasUVs = child.geometry.attributes.uv !== undefined;
                             if (!hasUVs) {
                                 log(`⚠ Mesh "${child.name}" n'a pas d'UVs, génération automatique...`, 'warning');
-                                // Tentative de génération d'UVs basiques (box projection)
                                 if (!child.geometry.attributes.uv) {
                                     const uvArray = [];
                                     const posArray = child.geometry.attributes.position.array;
                                     for (let i = 0; i < posArray.length; i += 3) {
-                                        // Projection basique XY
                                         uvArray.push((posArray[i] + 1) / 2, (posArray[i + 1] + 1) / 2);
                                     }
                                     child.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
@@ -730,23 +934,23 @@ function loadTextures(part, colorIndex) {
                     }
                 });
             }
-            
+
             // Gérer les UV2 pour l'AO map si nécessaire
-            setupUV2ForAO(material, textures);
-            
-            material.needsUpdate = true;
-            log(`✓ Matériau ${part} mis à jour`);
+            setupUV2ForAO(materialForHelpers, textures);
+
+            log(`✓ Matériaux ${part} mis à jour`);
+
             // Mettre à jour le panneau de preview avec les textures chargées
-            // Sauvegarder temporairement pour le toggle
             window._lastLoadedTextures = textures;
             updateTexturePreviewPanel(textures);
-            // essayer de trouver un swatch serveur : Color_<code>_Swatch.png|jpg|webp
-                (async () => {
-                    try {
-                        const rawMaterialCode = materialCodesPerPart[part][colorIndex];
-                        const materialCode = normalizeMaterialCode(rawMaterialCode);
-                        const folderPath = `Textures/${modelName}/${part}/`;
-                        const swatch = await findSwatchForMaterial(folderPath, materialCode);
+
+            // essayer de trouver un swatch serveur et mettre à jour le bouton (utilise la 1re instance)
+            (async () => {
+                try {
+                    const rawMaterialCode = materialCodesPerPart[part] && materialCodesPerPart[part][colorIndex] ? materialCodesPerPart[part][colorIndex] : (materialCodesPerPart[part] ? materialCodesPerPart[part][0] : null);
+                    const materialCode = normalizeMaterialCode(rawMaterialCode);
+                    const folderPath = `Textures/${modelName}/${part}/`;
+                    const swatch = await findSwatchForMaterial(folderPath, materialCode);
                     if (swatch) {
                         const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
                         if (btn) {
@@ -758,17 +962,86 @@ function loadTextures(part, colorIndex) {
                             }
                         }
                     } else {
-                        // si pas de swatch serveur, utiliser la texture albedo si elle existe
                         updateColorButtonSwatch(part, textures);
                     }
                 } catch (e) {
                     updateColorButtonSwatch(part, textures);
                 }
             })();
+
+            return textures;
         } else {
             log(`✗ Aucun matériau trouvé pour ${part}`, 'warning');
+            return null;
         }
     });
+}
+
+// Après le chargement initial, lire Textures/<modelName>/index.json (si présent)
+// et tenter de charger/apply les textures des dossiers supplémentaires.
+async function loadOtherTextureFoldersAndApply() {
+    const idxPath = `Textures/${modelName}/index.json`;
+    try {
+        const resp = await fetch(idxPath);
+        if (!resp.ok) {
+            log(`Aucun index.json au niveau du produit (${idxPath}), pas de dossiers additionnels à charger`);
+            return;
+        }
+        const data = await resp.json();
+        if (!data) return;
+
+        // Supporter plusieurs formats: { parts: [...] } | { folders: [...] } | { items: [ { name } ] } | array
+        let folders = [];
+        if (Array.isArray(data)) {
+            folders = data.map(it => typeof it === 'string' ? it : (it.name || it.folder || null)).filter(Boolean);
+        } else if (Array.isArray(data.parts)) {
+            folders = data.parts.slice();
+        } else if (Array.isArray(data.folders)) {
+            folders = data.folders.slice();
+        } else if (Array.isArray(data.items)) {
+            folders = data.items.map(it => typeof it === 'string' ? it : (it.name || it.folder || null)).filter(Boolean);
+        } else if (Array.isArray(data.files)) {
+            // essayer d'extraire dossier à partir de chemins
+            folders = data.files.map(f => {
+                if (typeof f === 'string' && f.includes('/')) return f.split('/')[0];
+                return null;
+            }).filter(Boolean);
+        }
+
+        // Dédupliquer et exclure les productParts déjà gérés
+        folders = [...new Set(folders.map(f => String(f)))].filter(f => f && !productParts.includes(f));
+        if (folders.length === 0) {
+            log('Aucun dossier additionnel trouvé dans l\'index du produit.');
+            return;
+        }
+
+        for (const folder of folders) {
+            try {
+                log(`Chargement textures dossier additionnel: ${folder}`);
+                // charger textures (loadTextures tente de lire folder/index.json si présent)
+                const textures = await loadTextures(folder, currentColorIndex[folder] || 0);
+                if (!textures) continue;
+
+                // Appliquer aux matériaux correspondant au nom de dossier
+                model.traverse((child) => {
+                    if (!child.isMesh) return;
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach((mat) => {
+                        if (!mat || !mat.name) return;
+                        if (mat.name.toLowerCase() === folder.toLowerCase()) {
+                            applyMaterialMode(mat, textures);
+                            mat.needsUpdate = true;
+                            log(`✓ Textures appliquées au matériau ${mat.name} depuis dossier ${folder}`);
+                        }
+                    });
+                });
+            } catch (e) {
+                log(`Erreur chargement dossier ${folder}: ${e && e.message ? e.message : e}`, 'warning');
+            }
+        }
+    } catch (e) {
+        log(`Impossible de lire ${idxPath} ou traiter son contenu: ${e && e.message ? e.message : e}`, 'warning');
+    }
 }
 
 // Normalize material code: accept either 'W001' or 'Color_W001' and return 'W001'
@@ -1440,7 +1713,10 @@ function setEnvToggleLabelOptions(options = {}) {
         color = (typeof options.color !== 'undefined' ? options.color : undefined),
         textAnchor = (typeof options.textAnchor !== 'undefined' ? options.textAnchor : undefined),
         startAt = (typeof options.startAt !== 'undefined' ? options.startAt : undefined),
-        direction = (typeof options.direction !== 'undefined' ? options.direction : undefined)
+        direction = (typeof options.direction !== 'undefined' ? options.direction : undefined),
+        rotationDeg = (typeof options.rotationDeg !== 'undefined' ? options.rotationDeg : undefined),
+        showCodeLabel = (typeof options.showCodeLabel !== 'undefined' ? options.showCodeLabel : undefined),
+        codeLabelFormat = (typeof options.codeLabelFormat !== 'undefined' ? options.codeLabelFormat : undefined)
     } = options;
 
     try {
@@ -1463,11 +1739,26 @@ function setEnvToggleLabelOptions(options = {}) {
         const useTextAnchor = (typeof textAnchor !== 'undefined') ? textAnchor : (typeof partDefaults.textAnchor !== 'undefined' ? partDefaults.textAnchor : globalDefaults.textAnchor);
         const useStartAt = (typeof startAt !== 'undefined') ? startAt : (typeof partDefaults.startAt !== 'undefined' ? partDefaults.startAt : globalDefaults.startAt);
         const useDirection = (typeof direction !== 'undefined') ? direction : (typeof partDefaults.direction !== 'undefined' ? partDefaults.direction : globalDefaults.direction);
+        const useRotationDeg = (typeof rotationDeg !== 'undefined') ? Number(rotationDeg) : (typeof partDefaults.rotationDeg !== 'undefined' ? Number(partDefaults.rotationDeg) : (typeof globalDefaults.rotationDeg !== 'undefined' ? Number(globalDefaults.rotationDeg) : 0));
+        const useShowCodeLabel = (typeof showCodeLabel !== 'undefined') ? !!showCodeLabel : (typeof partDefaults.showCodeLabel !== 'undefined' ? !!partDefaults.showCodeLabel : !!globalDefaults.showCodeLabel);
+        const useCodeLabelFormat = (typeof codeLabelFormat !== 'undefined') ? String(codeLabelFormat) : (partDefaults.codeLabelFormat || globalDefaults.codeLabelFormat || '${code}');
 
         // update radius (path 'd') if present
         if (path && typeof useRadius === 'number') {
             const startOffsetY = (String(useStartAt).toLowerCase() === 'bottom') ? `${useRadius}` : `-${useRadius}`;
-            const sweepFlag = (String(useDirection).toLowerCase() === 'ccw') ? 0 : 1;
+            // Respect global inversion toggle if set by developer
+            let effectiveDirection = String(useDirection).toLowerCase();
+            try {
+                if (window && window._invertCircularText) {
+                    effectiveDirection = (effectiveDirection === 'ccw') ? 'cw' : 'ccw';
+                }
+            } catch (e) { /* ignore if window not available */ }
+
+            // Compute sweepFlag optionally (toggleable)
+            const sweepFlag = (typeof window !== 'undefined' && window._enableSweepFlag === false)
+                ? 1
+                : ((effectiveDirection === 'ccw') ? 0 : 1);
+
             path.setAttribute('d', `M50,50 m0,${startOffsetY} a${useRadius},${useRadius} 0 1,${sweepFlag} -0.01,0`);
         }
 
@@ -1483,7 +1774,12 @@ function setEnvToggleLabelOptions(options = {}) {
                     textPath.setAttribute('font-size', String(useFontSize));
                     textPath.setAttribute('fill', useColor);
                     textPath.setAttribute('text-anchor', String(useTextAnchor));
-                    try { textPath.setAttribute('side', String(useDirection).toLowerCase() === 'ccw' ? 'right' : 'left'); } catch (e) { /* ignore */ }
+                    try {
+                        // best-effort: set non-standard 'side' attribute based on effective direction
+                        let effectiveDirForSide = String(useDirection).toLowerCase();
+                        if (window && window._invertCircularText) effectiveDirForSide = (effectiveDirForSide === 'ccw') ? 'cw' : 'ccw';
+                        textPath.setAttribute('side', effectiveDirForSide === 'ccw' ? 'right' : 'left');
+                    } catch (e) { /* ignore */ }
                 }
             } catch (e) {
                 if (textPath) {
@@ -1496,8 +1792,17 @@ function setEnvToggleLabelOptions(options = {}) {
 
         if (text) {
             try {
+                // base rotation from `startAt: 'bottom'` behavior (kept for backward-compat)
+                let baseRot = 0;
                 if (String(useStartAt).toLowerCase() === 'bottom') {
-                    text.setAttribute('transform', 'rotate(180 50 50)');
+                    if (typeof window === 'undefined' || window._enableBottomRotation !== false) {
+                        baseRot = 180;
+                    }
+                }
+
+                const totalRot = (Number(baseRot) || 0) + (Number(useRotationDeg) || 0);
+                if (totalRot !== 0) {
+                    text.setAttribute('transform', `rotate(${totalRot} 50 50)`);
                 } else {
                     text.removeAttribute('transform');
                 }
@@ -1507,6 +1812,31 @@ function setEnvToggleLabelOptions(options = {}) {
         if (textPath) {
             textPath.setAttribute('startOffset', String(useStartOffset));
         }
+
+        // Update per-item code labels for color dropdowns
+        try {
+            if (container && container.classList && container.classList.contains('color-dropdown')) {
+                const items = container.querySelectorAll('.color-swatch-btn');
+                items.forEach((item) => {
+                    let lbl = item.querySelector('.swatch-code-label');
+                    if (!lbl) {
+                        lbl = document.createElement('div');
+                        lbl.className = 'swatch-code-label';
+                        lbl.style.fontSize = '10px';
+                        lbl.style.marginTop = '4px';
+                        lbl.style.textAlign = 'center';
+                        item.appendChild(lbl);
+                    }
+                    const code = item.title || item.dataset.code || '';
+                    const idx = item.dataset.index || '';
+                    let formatted = String(useCodeLabelFormat).replace('${code}', code).replace('${index}', String(Number(idx) + 1));
+                    lbl.textContent = formatted;
+                    lbl.style.display = useShowCodeLabel ? '' : 'none';
+                });
+            }
+
+            // Environment thumbnail captions intentionally not modified here
+        } catch (e) { /* ignore per-item label updates */ }
     } catch (e) {
         // ignore errors
     }
@@ -1606,6 +1936,22 @@ function generateColorButtons() {
                 s.style.justifyContent = 'center';
 
                 item.appendChild(s);
+
+                // optional code label under the swatch (visible if enabled in defaults)
+                try {
+                    const showCode = !!(CIRCULAR_LABEL_DEFAULTS_COLOR && CIRCULAR_LABEL_DEFAULTS_COLOR.showCodeLabel);
+                    const fmt = (CIRCULAR_LABEL_DEFAULTS_COLOR && CIRCULAR_LABEL_DEFAULTS_COLOR.codeLabelFormat) || '${code}';
+                    const lbl = document.createElement('div');
+                    lbl.className = 'swatch-code-label';
+                    lbl.style.fontSize = '10px';
+                    lbl.style.marginTop = '4px';
+                    lbl.style.textAlign = 'center';
+                    lbl.textContent = String(fmt).replace('${code}', code).replace('${index}', String(idx + 1));
+                    lbl.style.display = showCode ? '' : 'none';
+                    item.appendChild(lbl);
+                } catch (e) {
+                    // ignore label creation errors
+                }
 
                 // Charger la vignette côté serveur pour cet item (si disponible)
                 (async () => {
@@ -1827,7 +2173,7 @@ function generateEnvironmentSelector() {
     menu.appendChild(noneItem);
 
     // add env map items
-    availableEnvironmentMaps.forEach((envMap) => {
+        availableEnvironmentMaps.forEach((envMap) => {
         const item = document.createElement('div');
         item.className = 'env-item';
 
@@ -1840,6 +2186,8 @@ function generateEnvironmentSelector() {
         tlabel.className = 'env-label';
         tlabel.textContent = envMap.displayName;
         item.appendChild(tlabel);
+
+            // Caption handled centrally by setEnvToggleLabelOptions to avoid duplicates
 
         item.addEventListener('click', async () => {
             log(`Changement d'environment map: ${envMap.path}`);
@@ -2107,11 +2455,28 @@ async function loadLeftTextFromUrl(url = 'left-panel.txt') {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const txt = await resp.text();
-        // Afficher dans un <pre> pour conserver les retours à la ligne
-        contentDiv.innerHTML = '';
-        const pre = document.createElement('pre');
-        pre.textContent = txt;
-        contentDiv.appendChild(pre);
+
+        // Si marked + DOMPurify sont disponibles, transformer Markdown -> HTML -> sanitize
+        try {
+            if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                const rawHtml = marked.parse(txt);
+                const safe = DOMPurify.sanitize(rawHtml);
+                contentDiv.innerHTML = safe;
+            } else {
+                // Fallback: afficher en texte brut préformaté
+                contentDiv.innerHTML = '';
+                const pre = document.createElement('pre');
+                pre.textContent = txt;
+                contentDiv.appendChild(pre);
+            }
+        } catch (renderErr) {
+            // En cas d'erreur pendant le rendu, retomber sur texte brut
+            contentDiv.innerHTML = '';
+            const pre = document.createElement('pre');
+            pre.textContent = txt;
+            contentDiv.appendChild(pre);
+        }
+
         setLeftTextPanelEnabled(true);
         log(`✓ Texte chargé depuis ${url}`);
     } catch (e) {
