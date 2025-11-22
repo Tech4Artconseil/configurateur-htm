@@ -81,6 +81,17 @@ Dans `app.js`, modifiez les variables suivantes pour ajuster le rendu :
 - `productParts` : Tableau des parties configurables (ex: ['Pied', 'Assise'])
 - `materialCodesPerPart` : Objet avec codes de matériaux par partie (ex: {Pied: ['W001', 'W002', 'M001'], Assise: ['F001', 'L001']})
 
+Note importante — valeur par défaut pour les options couleurs
+- Si `Textures/<model>/<part>/index.json` est présent et contient un tableau `codes`, l'application utilise le premier élément de ce tableau comme option sélectionnée par défaut pour la partie concernée (équivalent à `currentColorIndex[part] = 0`).
+- Exemple `Textures/fauteuil/Assise/index.json` :
+  ```json
+  {
+    "codes": ["L001", "W001", "M010"],
+    "swatches": { "L001": "Color_L001_thumb.jpg" }
+  }
+  ```
+  Dans cet exemple, `L001` sera la couleur par défaut pour `Assise` au démarrage.
+ - Pour forcer une couleur différente sans modifier l'index.json, vous pouvez définir `currentColorIndex["Assise"]` dans `app.js` avant l'initialisation.
 ### Configuration des canaux de textures
 - `textureChannels` : Objet pour activer/désactiver les canaux de textures et définir leurs extensions
   ```javascript
@@ -149,6 +160,18 @@ Au chargement du modèle 3D, si `unlitMode = false`, le système charge automati
 - **Fichier** : `Textures/environement/Default_Lit.hdr`
 - **Paramètres utilisés** : `envMapIntensity` et `envMapRotation` définis dans les variables
 - Si le fichier n'est pas trouvé, un avertissement est affiché et la couleur de fond est utilisée
+
+Choix par défaut via `index.json`
+- Si un fichier `Textures/environement/index.json` est présent, l'application lit ce fichier en priorité pour construire la liste des environment maps disponibles. Lorsque le fichier existe et contient au moins un élément, l'application considère désormais le premier élément du tableau comme l'environment map par défaut au démarrage (sauf si `unlitMode === true`).
+- Exemple `Textures/environement/index.json` :
+  ```json
+  [
+    { "file": "Env_01.hdr", "thumb": "Env_01_thumb.jpg", "displayName": "Studio" },
+    { "file": "Env_02.exr", "thumb": "Env_02_thumb.jpg", "displayName": "Showroom" }
+  ]
+  ```
+  Dans cet exemple, `Env_01.hdr` sera utilisée comme environment map par défaut au démarrage.
+- Vous pouvez toujours overrider ce comportement en définissant manuellement `useEnvironmentMap = true` et `environmentMapPath = 'Textures/environement/Env_02.exr'` dans `app.js` avant l'initialisation.
 
 #### Mode Lit (éclairage dynamique)
 Utilise des **environment maps** pour les réflections et l'éclairage indirect :

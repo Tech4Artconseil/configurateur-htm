@@ -212,20 +212,23 @@ button:hover {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    background: rgba(8,8,8,0.88);
-    border: 1px solid rgba(255,255,255,0.04);
+    background: #ffffff; /* blanc pour la liste */
+    color: #111; /* texte foncé sur fond blanc */
+    border: 1px solid rgba(0,0,0,0.08);
     padding: 8px;
     display: none;
-    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.12);
     z-index: 3000;
-    width: 320px;
+    width: auto; /* s'ajuste au contenu */
+    min-width: 220px; /* largeur minimale pour bonne lisibilité */
+    max-width: 480px; /* limiter l'explosion sur grands écrans */
     border-radius: 10px;
 }
 .env-dropdown.open .env-dropdown-menu { display: block; }
 .env-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 8px; cursor: pointer; }
-.env-item:hover { background: rgba(255,255,255,0.02); }
+.env-item:hover { background: rgba(0,0,0,0.04); }
 .env-item img { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; }
-.env-item .env-label { color: #ddd; font-size: 11px; }
+.env-item .env-label { color: #111; font-size: 12px; }
 
 /* make select look like a rounded button (black text, transparent background) */
 #environment-selector {

@@ -284,6 +284,20 @@ async function scanEnvironmentMaps() {
             }
             availableEnvironmentMaps = maps;
             log(`✓ ${maps.length} environment map(s) chargée(s) depuis index.json`);
+            // Si l'index contient au moins un item, considérer le premier comme option par défaut
+            if (maps.length > 0) {
+                // Ne pas forcer si on est en mode Unlit
+                if (!unlitMode) {
+                    useEnvironmentMap = true;
+                    // Respecter explicitement le choix précédent si déjà défini
+                    if (!environmentMapPath) {
+                        environmentMapPath = maps[0].path;
+                        log(`→ Environment map par défaut définie depuis index.json: ${environmentMapPath}`);
+                    } else {
+                        log(`→ Environment map déjà définie (préservée): ${environmentMapPath}`);
+                    }
+                }
+            }
             return maps;
         }
     } catch (e) {
@@ -585,18 +599,19 @@ detectModelExtension()
     
     // Charger l'environment map par défaut si en mode Lit
     if (!unlitMode) {
-        const defaultEnvMapPath = 'Textures/environement/Default_Lit.hdr';
-        log('Chargement de l\'environment map par défaut: Default_Lit.hdr');
-        changeEnvironment({
-            type: 'envmap',
-            envMapPath: defaultEnvMapPath,
-            intensity: envMapIntensity,
-            rotation: envMapRotation
-        }).then(() => {
-            log('✓ Environment map par défaut appliquée');
-        }).catch((error) => {
-            log(`⚠ Impossible de charger l'environment map par défaut: ${error.message}`, 'warning');
-        });
+        // Si un environment map a été défini (par example via index.json), l'utiliser.
+        if (useEnvironmentMap && environmentMapPath) {
+            log(`Chargement de l'environment map par défaut définie: ${environmentMapPath}`);
+            changeEnvironment({ type: 'envmap', envMapPath: environmentMapPath, intensity: envMapIntensity, rotation: envMapRotation })
+                .then(() => { log('✓ Environment map par défaut appliquée'); })
+                .catch((error) => { log(`⚠ Impossible de charger l'environment map par défaut: ${error.message}`, 'warning'); });
+        } else {
+            const defaultEnvMapPath = 'Textures/environement/Default_Lit.hdr';
+            log('Chargement de l\'environment map par défaut: Default_Lit.hdr');
+            changeEnvironment({ type: 'envmap', envMapPath: defaultEnvMapPath, intensity: envMapIntensity, rotation: envMapRotation })
+                .then(() => { log('✓ Environment map par défaut appliquée'); })
+                .catch((error) => { log(`⚠ Impossible de charger l'environment map par défaut: ${error.message}`, 'warning'); });
+        }
     }
     
     // Générer les boutons de couleur dynamiquement (après le chargement)
@@ -1591,6 +1606,21 @@ function generateColorButtons() {
                 s.style.justifyContent = 'center';
 
                 item.appendChild(s);
+
+                // Charger la vignette côté serveur pour cet item (si disponible)
+                (async () => {
+                    try {
+                        const folderPath = `Textures/${modelName}/${part}/`;
+                        const sw = await findSwatchForMaterial(folderPath, code);
+                        if (sw) {
+                            s.style.backgroundImage = `url('${sw}')`;
+                            s.style.backgroundColor = 'transparent';
+                            s.textContent = '';
+                        }
+                    } catch (e) {
+                        // ignore individual item errors
+                    }
+                })();
 
                 item.addEventListener('click', () => {
                     currentColorIndex[part] = idx;
