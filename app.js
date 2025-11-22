@@ -945,29 +945,36 @@ async function loadTextures(part, colorIndex) {
             updateTexturePreviewPanel(textures);
 
             // essayer de trouver un swatch serveur et mettre à jour le bouton (utilise la 1re instance)
-            (async () => {
-                try {
-                    const rawMaterialCode = materialCodesPerPart[part] && materialCodesPerPart[part][colorIndex] ? materialCodesPerPart[part][colorIndex] : (materialCodesPerPart[part] ? materialCodesPerPart[part][0] : null);
-                    const materialCode = normalizeMaterialCode(rawMaterialCode);
-                    const folderPath = `Textures/${modelName}/${part}/`;
-                    const swatch = await findSwatchForMaterial(folderPath, materialCode);
-                    if (swatch) {
-                        const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
-                        if (btn) {
-                            const sw = btn.querySelector('.swatch');
-                            if (sw) {
-                                sw.style.backgroundImage = `url('${swatch}')`;
-                                sw.style.backgroundColor = 'transparent';
-                                sw.textContent = '';
+            // NOTE: Ne pas chercher de vignettes pour les dossiers "autres" qui ne sont pas des
+            // parties d'option couleur (ex: dossiers listés via Textures/<model>/index.json).
+            // Ces dossiers n'ont pas d'UI de sélection et n'auront pas de thums; éviter les requêtes inutiles.
+            if (Array.isArray(productParts) && productParts.map(p => String(p).toLowerCase()).includes(String(part).toLowerCase())) {
+                (async () => {
+                    try {
+                        const rawMaterialCode = materialCodesPerPart[part] && materialCodesPerPart[part][colorIndex] ? materialCodesPerPart[part][colorIndex] : (materialCodesPerPart[part] ? materialCodesPerPart[part][0] : null);
+                        const materialCode = normalizeMaterialCode(rawMaterialCode);
+                        const folderPath = `Textures/${modelName}/${part}/`;
+                        const swatch = await findSwatchForMaterial(folderPath, materialCode);
+                        if (swatch) {
+                            const btn = document.getElementById(`${part.toLowerCase()}-color-btn`);
+                            if (btn) {
+                                const sw = btn.querySelector('.swatch');
+                                if (sw) {
+                                    sw.style.backgroundImage = `url('${swatch}')`;
+                                    sw.style.backgroundColor = 'transparent';
+                                    sw.textContent = '';
+                                }
                             }
+                        } else {
+                            updateColorButtonSwatch(part, textures);
                         }
-                    } else {
+                    } catch (e) {
                         updateColorButtonSwatch(part, textures);
                     }
-                } catch (e) {
-                    updateColorButtonSwatch(part, textures);
-                }
-            })();
+                })();
+            } else {
+                // Pas une partie d'option couleur -> ne pas tenter de charger de vignette
+            }
 
             return textures;
         } else {
