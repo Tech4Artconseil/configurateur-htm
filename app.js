@@ -124,6 +124,69 @@ if (document.readyState === 'loading') {
 // (NOTE) metallic GPU correction removed — kept configuration minimal
 // -----------------------------------------------------------------------------
 
+// -----------------------
+// Loading overlay helpers
+// -----------------------
+function createLoadingOverlay() {
+    if (document.getElementById('t4a-loading-overlay')) return;
+    const o = document.createElement('div');
+    o.id = 't4a-loading-overlay';
+    o.style.position = 'fixed';
+    o.style.left = '0';
+    o.style.top = '0';
+    o.style.width = '100%';
+    o.style.height = '100%';
+    o.style.display = 'flex';
+    o.style.flexDirection = 'column';
+    o.style.alignItems = 'center';
+    o.style.justifyContent = 'center';
+    o.style.background = 'rgba(255,255,255,0.95)';
+    o.style.zIndex = '100000';
+    o.style.transition = 'opacity 280ms ease';
+    o.innerHTML = `
+      <div style="text-align:center; max-width:460px; padding:12px;">
+        <div class="t4a-spinner" style="margin:0 auto 12px; width:48px; height:48px; border-radius:50%; border:5px solid #e6e6e6; border-top-color:#222; animation: t4a-spin 1s linear infinite;"></div>
+        <div id="t4a-loading-msg" style="font-size:14px; color:#222; margin-bottom:8px;">Chargement...</div>
+        <div style="width:260px; height:8px; background:#eee; border-radius:8px; overflow:hidden; margin:0 auto;"><div id='t4a-loading-bar' style='width:0%; height:100%; background:#2563eb; transition:width 200ms;'></div></div>
+        <div id='t4a-loading-percent' style='font-size:12px;color:#666;margin-top:8px;'>0%</div>
+      </div>
+    `;
+    document.body.appendChild(o);
+    const style = document.createElement('style');
+    style.id = 't4a-loading-style';
+    style.textContent = `@keyframes t4a-spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
+}
+
+function showLoadingOverlay(msg = 'Chargement...') {
+    createLoadingOverlay();
+    const o = document.getElementById('t4a-loading-overlay');
+    if (!o) return;
+    o.style.opacity = '1';
+    o.style.display = 'flex';
+    const m = document.getElementById('t4a-loading-msg'); if (m) m.textContent = msg;
+    updateLoadingProgress(0);
+}
+
+function updateLoadingMessage(msg) {
+    const m = document.getElementById('t4a-loading-msg'); if (m) m.textContent = msg;
+}
+
+function updateLoadingProgress(pct) {
+    const bar = document.getElementById('t4a-loading-bar');
+    const p = document.getElementById('t4a-loading-percent');
+    if (bar) bar.style.width = `${Math.max(0, Math.min(100, Math.round(pct)))}%`;
+    if (p) p.textContent = `${Math.round(pct)}%`;
+}
+
+function hideLoadingOverlay() {
+    const o = document.getElementById('t4a-loading-overlay');
+    if (!o) return;
+    o.style.opacity = '0';
+    setTimeout(() => { if (o && o.parentElement) o.parentElement.removeChild(o); const s = document.getElementById('t4a-loading-style'); if (s) s.remove(); }, 360);
+}
+
+
 // Configuration de la gestion des UVs
 let uvSettings = {
     autoGenerateUV: false,  // Générer automatiquement les UVs si absents
@@ -557,10 +620,13 @@ async function detectModelExtension() {
     return 'glb';
 }
 
+// Afficher l'overlay de chargement au démarrage
+showLoadingOverlay('Initialisation...');
+
 // Détecter l'extension, scanner les textures et environment maps, puis charger le modèle
 detectModelExtension()
-    .then(() => scanMaterialCodes())
-    .then(() => scanEnvironmentMaps())
+    .then(() => { updateLoadingMessage('Scan des textures...'); return scanMaterialCodes(); })
+    .then(() => { updateLoadingMessage('Scan des environment maps...'); return scanEnvironmentMaps(); })
     .then(() => {
         // Générer l'interface après avoir scanné les environment maps
         generateEnvironmentSelector();
@@ -578,7 +644,11 @@ detectModelExtension()
     loader.load(modelFile, (gltf) => {
     log(`Modèle ${modelExtension.toUpperCase()} chargé avec succès`);
     model = gltf.scene;
+    // masquer le modèle pendant les étapes de chargement et d'application des textures
+    model.visible = false;
     scene.add(model);
+    updateLoadingMessage('Modèle chargé, préparation...');
+    updateLoadingProgress(10);
 
     // Analyser tous les matériaux présents dans le modèle
     log('=== ANALYSE DES MATÉRIAUX DU MODÈLE ===');
@@ -705,13 +775,29 @@ detectModelExtension()
     const initialLoadPromises = productParts.map(part => {
         const materialCode = materialCodesPerPart[part] && materialCodesPerPart[part][currentColorIndex[part]] ? materialCodesPerPart[part][currentColorIndex[part]] : (materialCodesPerPart[part] ? materialCodesPerPart[part][0] : null);
         textureLog(`Chargement des textures pour: ${part} (matériau ${materialCode})`);
+        updateLoadingMessage(`Chargement textures: ${part}`);
         return loadTextures(part, currentColorIndex[part]).catch(e => { log(`Erreur chargement textures pour ${part}: ${e && e.message ? e.message : e}`, 'warning'); return null; });
     });
 
-    Promise.all(initialLoadPromises).then(() => {
+    Promise.all(initialLoadPromises).then(async () => {
         // Après avoir chargé les textures pour les parties configurées, tenter de charger d'autres dossiers listés
         // dans un index.json au niveau du dossier produit (Textures/<modelName>/index.json)
-        loadOtherTextureFoldersAndApply().catch(err => { log(`Erreur lors du chargement des dossiers additionnels: ${err && err.message ? err.message : err}`, 'warning'); });
+        try {
+            updateLoadingMessage('Chargement dossiers additionnels...');
+            await loadOtherTextureFoldersAndApply();
+        } catch (err) {
+            log(`Erreur lors du chargement des dossiers additionnels: ${err && err.message ? err.message : err}`, 'warning');
+        }
+
+        // Tout est chargé : afficher le modèle d'un seul coup
+        try {
+            updateLoadingMessage('Finalisation...');
+            updateLoadingProgress(100);
+            model.visible = true;
+            hideLoadingOverlay();
+        } catch (e) {
+            // ignore
+        }
     });
 
     // Cadre automatique du modèle : utilise les variables initiales (focal length, hauteur, azimut, fill)

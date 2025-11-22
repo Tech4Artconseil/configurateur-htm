@@ -341,6 +341,43 @@ initializeEnvironment();
   - ▶ : Activer/désactiver autorotation
   - Boutons de couleur : Un bouton par partie configurable (généré dynamiquement selon `productParts`), pour changer la couleur
 
+  ## Aide & dépannage rapide
+
+  Voici des conseils pratiques pour lancer, diagnostiquer et corriger les problèmes courants :
+
+  - **Lancer localement (PowerShell)** : depuis le répertoire du projet, ouvrez PowerShell et utilisez l'une des commandes suivantes :
+
+  ```powershell
+  cd 'c:\Travail\DEV\Devdivers\Configurateur_HTM'
+  # Avec Python 3
+  python -m http.server 8000
+  # Ou, si vous avez Node.js/npm
+  npx http-server -p 8000
+  ```
+
+  - **Page à ouvrir** : `http://localhost:8000/` — ouvrez-la dans Chrome ou Firefox.
+
+  - **Si les textures ne s'affichent pas** :
+    - Vérifiez la **console** pour les erreurs CORS (cross-origin). Si vous voyez `tainted canvas` ou erreurs de chargement, servez les fichiers depuis un serveur local (ne pas ouvrir le fichier `file://`).
+    - Contrôlez la **nomenclature** des fichiers dans `Textures/<model>/<part>/` : `Color_<CODE>_Albedo.jpg`, `Color_<CODE>_NormalGL.png`, etc. Le code doit correspondre à ceux listés dans `index.json` (si présent).
+
+  - **Pas de vignette (swatch) pour certains dossiers** :
+    - Les dossiers listés via `Textures/<model>/index.json` mais **non** inclus dans `productParts` sont traités comme "dossiers additionnels" et **n'ont pas de vignettes** recherchées automatiquement. Ceci évite des requêtes inutiles pour des dossiers "Autre".
+
+  - **Forcer une couleur au démarrage** : définissez `currentColorIndex['Assise'] = 2;` (ou l'indice souhaité) dans `app.js` avant l'initialisation pour sélectionner la 3ᵉ option par défaut.
+
+  - **Activer le logging pour diagnostiquer** : dans `app.js`, mettez `enableLogging = true;` et `enableTextureLogging = true;` pour obtenir des logs détaillés dans la console (chargements, fallback, recherche de vignettes).
+
+  - **Matériaux non trouvés** : si le matériau du GLB ne porte pas exactement le même nom que le dossier (ex: `Seat` vs `Assise`), on peut :
+    - Renommer le matériau dans le GLB pour qu'il corresponde à `productParts`, ou
+    - Ajouter un mapping (optionnel) dans `Textures/<model>/index.json` via un champ `materialName` — dites-moi si vous voulez que je l'implémente maintenant.
+
+  - **Overlay de chargement** : le player affiche désormais un overlay pendant le chargement initial (modèle + textures). Si l'overlay reste affiché, vérifiez la console pour des erreurs ou timeout sur les requêtes réseau.
+
+  - **Conseil performance** : fournissez des miniatures (`*_thumb.jpg`) pour les swatches et préfiltrez les environment maps (KTX2/PMREM) côté serveur pour réduire le travail CPU côté client.
+
+  Si vous voulez, j'ajoute une checklist automatique dans le README (vérifications à faire avant déploiement) ou j'implémente le mapping `materialName` dans `index.json` maintenant.
+
 ## API / Fonctions utiles
 
 ### Fonctions d'environnement
