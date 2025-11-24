@@ -1,0 +1,81 @@
+# .gitignore pour le projet Configurateur_HTM
+# Ignorer les dépendances node et artefacts locaux
+/node_modules/
+/npm-debug.log*
+/yarn-debug.log*
+/yarn-error.log*
+
+# Dossiers de build / distribution
+/dist/
+/build/
+/.parcel-cache/
+/test360/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / éditeurs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Python artefacts (au cas où)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches et fichiers temporaires
+.cache/
+.tmp/
+.tmp*/
+*.tmp
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# npm / node
+.pnp.*
+.pnp.js
+
+# Coverage
+coverage/
+coverage-final.json
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# OS specific
+ehthumbs.db
+Icon?
+
+# Editor backups
+*~
+*.swp
+
+# VS Code workspace (optionnel: le fichier .code-workspace est dans le repo, donc on ne l'ignore pas)
+# Configurateur_HTM.code-workspace
+
+# Ne pas ignorer les assets du projet (Textures/, GLB, etc.) - ils font partie du dépôt
+
+# Fichiers secrets potentiels
+*.pem
+*.key
+
+# Jetons / caches de CI
+*.retry
+
+# End of .gitignore
