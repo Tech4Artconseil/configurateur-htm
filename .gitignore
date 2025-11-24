@@ -9,7 +9,7 @@
 /dist/
 /build/
 /.parcel-cache/
-/test360/
+/Test360/
 
 # Logs
 *.log
