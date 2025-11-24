@@ -1,0 +1,247 @@
+<manifest alg="2" build="2018.1.1.386" opt="true" iceEnabled="true" iceMarkupVersion="2" iceEnabledOptions="link,responsive,cachebuster,textStyling" ftp_hostname="ftp://ftp.online.net" ftp_rootfolder="/" exportTarget="FTP" domain="http://www.studiogarnierservices.fr/simo" resolutions="1x" timestamp="1572947382584">
+  <folder name="css">
+    <file name="site_global.css" crc="444006867"/>
+    <file name="master_a-gabarit.css" crc="3824423186" ref="pz160:tm020:tc068:pm0401:tc033:tc037:pc146:tc055:tc1171:index:pc150"/>
+    <file name="pz160.css" crc="69813431" ref="pz160"/>
+    <file name="tm020.css" crc="69813431" ref="tm020"/>
+    <file name="tc068.css" crc="69813431" ref="tc068"/>
+    <file name="pm0401.css" crc="69813431" ref="pm0401"/>
+    <file name="tc033.css" crc="69813431" ref="tc033"/>
+    <file name="tc037.css" crc="69813431" ref="tc037"/>
+    <file name="pc146.css" crc="392278642" ref="pc146"/>
+    <file name="tc055.css" crc="69813431" ref="tc055"/>
+    <file name="tc1171.css" crc="69813431" ref="tc1171"/>
+    <file name="index.css" crc="69813431" ref="index"/>
+    <file name="pc150.css" crc="499157433" ref="pc150"/>
+  </folder>
+  <folder name="assets">
+    <file name="pc146.html" crc="292407509" seo="true" mt="1572888874000"/>
+    <file name="pc146_out.xml" crc="78879829" seo="true" mt="1572880075000"/>
+  </folder>
+  <folder name="scripts">
+    <file name="jquery-1.8.3.min.js" crc="209076791" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+    <file name="museutils.js" crc="3939489907" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+    <file name="whatinput.js" crc="86476730" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+    <file name="museconfig.js" crc="128606099" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+    <file name="jquery.watch.js" crc="522499760" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+    <file name="require.js" crc="4177726516" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020"/>
+  </folder>
+  <folder name="images">
+    <file name="img_0_0_30.png" crc="4153221374" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_302.png" crc="449286007" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_303.png" crc="3823693330" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_304.png" crc="387792359" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_305.png" crc="270499" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_306.png" crc="3915351388" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_307.png" crc="525649833" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_308.png" crc="527039333" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_24.png" crc="126781328" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="img_0_0_309.png" crc="4001632642" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+    </file>
+    <file name="simo fab en france 2016_2x.png" crc="320093822" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+    </file>
+    <file name="logo simo cercueil 2016_0-5x.png" crc="4204900595" seo="true" ref="index:pc146:pc150:pm0401:pz160:tc033:tc037:tc055:tc068:tc1171:tm020">
+      <caption webpage="pc150" alt=""/>
+      <caption webpage="pc146" alt=""/>
+      <caption webpage="pz160" alt=""/>
+      <caption webpage="tc1171" alt=""/>
+      <caption webpage="tm020" alt=""/>
+      <caption webpage="index" alt=""/>
+      <caption webpage="tc037" alt=""/>
+      <caption webpage="tc055" alt=""/>
+      <caption webpage="tc033" alt=""/>
+      <caption webpage="pm0401" alt=""/>
+      <caption webpage="tc068" alt=""/>
+    </file>
+  </folder>
+  <file name="index.html" crc="268679080" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="pc146.html" crc="4131328390" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="pc150.html" crc="25187274" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="pm0401.html" crc="4253866055" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="pz160.html" crc="4244799755" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tc033.html" crc="62336911" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tc037.html" crc="370000650" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tc055.html" crc="103691296" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tc068.html" crc="4067124572" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tc1171.html" crc="4213607559" seo="true" mt="1572947346943" redirect="true"/>
+  <file name="tm020.html" crc="532831635" seo="true" mt="1572947346943" redirect="true"/>
+  <site>
+    <asset filename="pc146.html" muse_href="upload:U904"/>
+    <asset filename="pc146_out.xml" muse_href="upload:U909"/>
+    <paragraphStyle className="normal_text" uid="U49"/>
+    <nestedListStyle className="nls-None" uid="U52"/>
+  </site>
+  <renditions>
+    <rendition device="desktop">
+      <page name="Page d'accueil" filename="index.html" muse_href="page:U93" master="U72">
+        <breakpoint uid="U83" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <masterPage name="A-Gabarit" master="U62" uid="U72">
+        <breakpoint uid="U73" maxwidth="1280" minwidth="0" squishy="true"/>
+      </masterPage>
+      <masterPage name="None" master="null" uid="U62">
+        <breakpoint uid="U63" maxwidth="1280" minwidth="0" squishy="true"/>
+      </masterPage>
+      <page name="PC146" filename="pc146.html" muse_href="page:U219" master="U72">
+        <breakpoint uid="U203" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="PC150" filename="pc150.html" muse_href="page:U258" master="U72">
+        <breakpoint uid="U242" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="PM0401" filename="pm0401.html" muse_href="page:U297" master="U72">
+        <breakpoint uid="U281" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="PZ160" filename="pz160.html" muse_href="page:U336" master="U72">
+        <breakpoint uid="U320" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TC033" filename="tc033.html" muse_href="page:U375" master="U72">
+        <breakpoint uid="U359" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TC037" filename="tc037.html" muse_href="page:U414" master="U72">
+        <breakpoint uid="U398" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TC055" filename="tc055.html" muse_href="page:U453" master="U72">
+        <breakpoint uid="U437" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TC068" filename="tc068.html" muse_href="page:U492" master="U72">
+        <breakpoint uid="U476" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TC1171" filename="tc1171.html" muse_href="page:U531" master="U72">
+        <breakpoint uid="U515" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+      <page name="TM020" filename="tm020.html" muse_href="page:U570" master="U72">
+        <breakpoint uid="U554" maxwidth="1280" minwidth="0" squishy="true"/>
+      </page>
+    </rendition>
+  </renditions>
+</manifest>
