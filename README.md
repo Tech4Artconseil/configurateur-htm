@@ -464,11 +464,19 @@ Ces variables permettent de contrôler la manière dont les images sont chargée
 - `showTexturePreviewPanel`, `texturePreviewSize`, `texturePreviewContainerId`, `enableLogging`
 - `enableTextureLogging` (boolean) — `false` : contrôle les logs relatifs au chargement/gestion des textures (les messages ne s'affichent que si `enableLogging && enableTextureLogging`)
 
+#### Overlay de chargement
+- `createLoadingOverlay()` — crée l'overlay avec spinner et barre de progression (IDs: `t4a-loading-overlay`, `t4a-loading-msg`, `t4a-loading-bar`, `t4a-loading-percent`)
+- `showLoadingOverlay(message)` — affiche l'overlay avec message personnalisé
+- `updateLoadingMessage(message)` — met à jour le texte affiché
+- `updateLoadingProgress(percent)` — met à jour la barre de progression (0-100)
+- `hideLoadingOverlay()` — masque et supprime l'overlay avec transition
+
 #### Labels circulaires (defaults)
-- `CIRCULAR_LABEL_DEFAULTS_ENV` — objet global de defaults pour le label circulaire des environnements (`fontSize`, `radius`, `startOffset`, `color`, `textAnchor`, `startAt`, `direction`)
+- `CIRCULAR_LABEL_DEFAULTS_ENV` — objet global de defaults pour le label circulaire des environnements (`fontSize`, `radius`, `startOffset`, `color`, `textAnchor`, `startAt`, `direction`, `rotationDeg`, `showCodeLabel`, `codeLabelFormat`)
 - `CIRCULAR_LABEL_DEFAULTS_COLOR` — objet global de defaults pour les labels circulaires des boutons de couleur (mêmes champs)
 - `window.setCircularLabelOptions(options)` — helper exposé pour appliquer ces options à chaud
 - `window.setEnvToggleLabelOptions(options)` — alias spécifique pour le toggle d'environnement
+- `window.setCircularLabelBehavior(options)` — configure les flags de compatibilité navigateur (`invertCircularText`, `enableSweepFlag`, `enableBottomRotation`)
 
 ### Nouveaux toggles et compatibilité cross-browser
 
@@ -480,9 +488,21 @@ Principaux flags exposés :
 - `window._enableSweepFlag` (boolean) — si `false`, le `sweepFlag` utilisé pour construire l'arc est fixé et la logique de flip automatique est désactivée.
 - `window._enableBottomRotation` (boolean) — si `false`, la transformation `rotate(180 50 50)` appliquée lorsque `startAt === 'bottom'` est ignorée.
 
-Direction intégrée aux defaults navigateur
+#### Détection automatique de navigateur
 
-Pour centraliser la configuration par navigateur, la propriété `direction` (`'cw'` | `'ccw'`) est maintenant intégrée dans la table `_browserDefaults` du code. Au démarrage, le script détecte un navigateur de base (Firefox / Chrome / Edge / Safari / other) via `navigator.userAgent` et applique la ligne de defaults correspondante. Cela permet d'avoir simultanément des valeurs par défaut pour `invertCircularText`, `enableSweepFlag`, `enableBottomRotation` et `direction` (sens d'écriture le long du cercle).
+Pour centraliser la configuration par navigateur, le système utilise une table `_browserDefaults` qui définit des comportements optimisés par navigateur :
+
+```javascript
+const _browserDefaults = {
+  firefox: { invertCircularText: false, enableSweepFlag: true, enableBottomRotation: true, direction: 'ccw' },
+  chrome: { invertCircularText: false, enableSweepFlag: true, enableBottomRotation: true, direction: 'cw' },
+  edge: { invertCircularText: false, enableSweepFlag: true, enableBottomRotation: true, direction: 'cw' },
+  safari: { invertCircularText: false, enableSweepFlag: false, enableBottomRotation: false, direction: 'cw' },
+  other: { invertCircularText: false, enableSweepFlag: true, enableBottomRotation: true, direction: 'cw' }
+};
+```
+
+Au démarrage, le script détecte le navigateur via `navigator.userAgent` et applique automatiquement les defaults correspondants. Cela permet d'avoir un rendu visuel cohérent des labels circulaires SVG sur Firefox, Chrome, Edge, Safari sans intervention manuelle.
 
 API runtime pour ajuster le comportement
 
