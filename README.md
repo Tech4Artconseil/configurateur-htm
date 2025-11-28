@@ -1,4 +1,4 @@
-# Visionneuse Fauteuil 3D
+# Visionneuse Fauteuil 3D ![Version](https://img.shields.io/badge/version-1.0.0-blue) ![Status](https://img.shields.io/badge/status-stable-green)
 
 Cette visionneuse permet d'afficher un modèle 3D de fauteuil au format GLB/GLTF avec options de configuration simples pour les pieds et l'assise, utilisant des textures externes.
 
