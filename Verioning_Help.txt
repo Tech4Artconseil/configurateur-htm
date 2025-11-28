@@ -1,0 +1,16 @@
+# 1. Développez vos changements
+git add .
+git commit -m "Fix: correction bug textures"
+
+# 2. Mettez à jour CHANGELOG.md (ajouter section [1.0.1])
+
+# 3. Mettez à jour le badge version dans README.md
+
+# 4. Créez la version
+git add .
+git commit -m "Release v1.0.1 - Correction bugs textures"
+git tag -a v1.0.1 -m "v1.0.1 - Bugfixes textures et performance"
+
+# 5. Poussez vers le serveur
+git push origin master
+git push origin v1.0.1
