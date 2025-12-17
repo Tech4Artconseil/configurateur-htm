@@ -1,0 +1,24 @@
+{
+  "_comment": "CONFIGURATEUR - Index auto-généré",
+  "_help": {
+    "role": "Index auto-généré - à adapter manuellement si besoin"
+  },
+  "items": [
+    {
+      "folder": "Ground",
+      "displayName": "Ground"
+    },
+    {
+      "folder": "SHINEO_bois",
+      "displayName": "SHINEO_bois"
+    },
+    {
+      "folder": "SHINEO_metal",
+      "displayName": "SHINEO_metal"
+    },
+    {
+      "folder": "SHINEO_Roulette",
+      "displayName": "SHINEO_Roulette"
+    }
+  ]
+}

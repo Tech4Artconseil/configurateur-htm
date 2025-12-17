@@ -1,0 +1,17 @@
+{
+  "_comment": "CONFIGURATEUR - Index auto-généré",
+  "_help": {
+    "role": "Index auto-généré - à adapter manuellement si besoin"
+  },
+  "items": [
+    {
+      "code": "Metal_Balnc"
+    },
+    {
+      "code": "metal_noir"
+    },
+    {
+      "code": "metal_Rougemetal"
+    }
+  ]
+}

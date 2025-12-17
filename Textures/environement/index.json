@@ -1,5 +1,16 @@
 [
   {
+    "_comment": "CONFIGURATEUR 3D - Index ENVIRONMENT MAPS",
+    "_help": {
+      "role": "Catalogue des environment maps avec métadonnées pour éclairage 360°",
+      "format": "Array d'objets avec: name, file, type, displayName, thumb",
+      "exemple": "Ajouter nouvelle env: {name: 'Studio', file: 'Studio.hdr', type: 'hdr', displayName: 'Éclairage Studio', thumb: 'Studio_thumb.jpg'}",
+      "contraintes": "Fichiers HDR/EXR doivent exister. Miniatures recommandées (JPG 256x128px max)",
+      "impact": "Premier élément = environment par défaut au démarrage. Génère menu déroulant environnement",
+      "formats_supportes": "HDR (RGBELoader), EXR (EXRLoader), JPG/PNG (TextureLoader)"
+    }
+  },
+  {
     "name": "Default",
     "file": "Default.hdr",
     "type": "hdr",

@@ -1,0 +1,17 @@
+{
+  "name": "configurator-index-generator",
+  "version": "0.1.0",
+  "description": "POC: génère index.json depuis l'arborescence Textures",
+  "main": "scripts/generate-index.js",
+  "type": "module",
+  "scripts": {
+    "poc": "node scripts/generate-index.js --root Textures/shineo --write",
+    "poc2": "node scripts/generate-index.js --root Textures/shineo ",
+    "test": "node tests/run-poc-test.js",
+    "test:integration": "node tests/integration-real-folder-test.js",
+    "test:resolve": "node tests/test-resolve-root.js",
+    "test:absolute": "node tests/test-absolute-root.js",
+    "test:texture-prefix": "node tests/test-texture-prefix.js"
+  }
+}
+  

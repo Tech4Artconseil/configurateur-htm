@@ -1,14 +1,17 @@
 {
-  "_comment": "CONFIGURATEUR 3D - Index niveau PRODUIT (fauteuil)",
+  "_comment": "CONFIGURATEUR 3D - Index niveau PRODUIT",
   "_help": {
     "role": "Liste les dossiers additionnels à charger automatiquement (non inclus dans productParts)",
     "format": "Array d'objets avec: folder (nom dossier), displayName (affichage), defaultCode (code par défaut)",
     "exemple": "Pour ajouter un dossier 'Accessoire': {folder: 'Accessoire', displayName: 'Options Accessoires', defaultCode: 'ACC001'}",
-    "contraintes": "Le dossier doit exister dans Textures/fauteuil/ et contenir un index.json avec codes",
+    "contraintes": "Le dossier doit exister et contenir un index.json avec codes",
     "impact": "Les textures seront appliquées aux matériaux GLB portant le même nom que 'folder'"
   },
   "items": [
-    { "folder": "Autre", "displayName": "Options Autre", "defaultCode": "X001" }
+    {
+      "folder": "ground",
+      "displayName": "Options ground",
+      "defaultCode": "Shadow"
+    }
   ]
 }
-

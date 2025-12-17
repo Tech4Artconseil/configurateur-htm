@@ -1,4 +1,13 @@
 {
+  "_comment": "CONFIGURATEUR 3D - Index niveau PARTIE (Autre)", 
+  "_help": {
+    "role": "Liste les codes matériaux pour dossier additionnel (pas d'interface utilisateur)",
+    "format": "Array de codes alphanumériques. Appliqué automatiquement, pas de sélection manuelle",
+    "exemple": "Ajouter nouvelle option: 'X002' (nécessite fichiers Color_X002_*.jpg)",
+    "contraintes": "Dossier référencé dans index.json niveau produit. Pas de vignettes générées",
+    "impact": "Textures appliquées aux matériaux GLB nommés 'Autre'. Premier code utilisé par défaut",
+    "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc."
+  },
   "codes": ["X001"]
 }
 
