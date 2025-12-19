@@ -49,7 +49,7 @@ let initialFocalLengthMm = 55;
 // Hauteur relative de la caméra par rapport au centre du modèle (unités Three.js)
 let initialCameraHeight = 1.2;
 // Orbit horizontal initial autour du modèle, en degrés (0 = face avant, 90 = côté)
-let initialOrbitDeg = 325;
+let initialOrbitDeg = 215 //325; IF model orieter blender Y
 // Distance de zoom initiale (en mètres) - si défini > 0, force la distance caméra->centre
 // Mettre `null` ou `0` pour désactiver et utiliser le calcul automatique basé sur `fill`.
 let initialZoomDistance = null;
@@ -335,6 +335,10 @@ let disabledMaterialCodes = {}; // Codes désactivés par partie dans Textures/{
 // Fonction pour charger toutes les configurations de désactivation depuis les JSON
 async function loadDisabledConfigurations() {
     log('Chargement des configurations de désactivation...');
+    // réinitialiser les listes pour éviter d'hériter des valeurs du modèle précédent
+    disabledModelItems = [];
+    disabledPartItems = {};
+    disabledMaterialCodes = {};
     
     try {
         // 1. Charger les modèles désactivés depuis Textures/index.json
@@ -2562,12 +2566,19 @@ async function loadModelByName(name) {
     updateLoadingMessage(`Chargement du modèle ${name}...`);
     // update global modelName then detect extension
     modelName = name;
+    // reset per-model caches to avoid inheriting previous model's data
+    materialCodesPerPart = {};
+    currentColorIndex = {};
     // recharger les index / configs spécifiques au modèle (utilisent la variable globale modelName)
     try {
         updateLoadingMessage('Scan des textures...');
         await scanMaterialCodes();               // met à jour materialCodesPerPart
         updateLoadingMessage('Chargement configurations désactivation...');
         await loadDisabledConfigurations();     // met à jour disabledModelItems / disabledPartItems / disabledMaterialCodes
+        // debug: afficher les listes de désactivation chargées pour vérifier
+        log(`DEBUG disabledModelItems: ${JSON.stringify(disabledModelItems)}`);
+        log(`DEBUG disabledPartItems: ${JSON.stringify(disabledPartItems)}`);
+        log(`DEBUG disabledMaterialCodes keys: ${Object.keys(disabledMaterialCodes).join(',')}`);
         // optionnel : rescanner les env maps si vous voulez que l'UI env soit rafraîchie
         // updateLoadingMessage('Scan des environment maps...');
         // await scanEnvironmentMaps();

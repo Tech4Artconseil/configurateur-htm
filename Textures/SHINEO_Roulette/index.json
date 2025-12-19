@@ -19,5 +19,5 @@
       "defaultCode": "X001"
     }
   ],
-  "disabledItems": ["Meca","Ground"]
+  "disabledItems": ["Meca","Ground","Pied_bois","Socle"]
 }

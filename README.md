@@ -383,6 +383,9 @@ Une fonctionnalité ajoute des boutons ronds permettant de charger directement d
 - Emplacement et style : le container créé est `#model-buttons` (overlay à gauche du viewer) et les boutons utilisent la classe `.model-button` (voir `styles.css`).
 - Intégration : l'implémentation réutilise `checkImageExists()`, `loadTextures()`, `generateColorButtons()` et les helpers d'UI existants (`showLoadingOverlay()`, `updateLoadingMessage()`, `hideLoadingOverlay()`).
 
+-  **BUG connus !  : 
+  - L'ui se met mal a jours quand on charge un nouveau models. Solution contournement : ajouter les option dans la liste des "desabled"
+  Cause : un residue d'info qui traine depuis le lancement du configurateur.
 
   ## Aide & dépannage rapide
 
