@@ -258,6 +258,39 @@ button:hover {
     border-radius: 10px;
 }
 .env-dropdown.open .env-dropdown-menu { display: block; }
+/*Style fro Models Button on left panel
+/* Model buttons container (left overlay) */
+#model-buttons {
+    position: absolute;
+    left: 12px;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2000;
+    pointer-events: auto;
+}
+
+/* Individual model button - circular */
+.model-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.6);
+    background: rgba(255,255,255,0.95);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.model-button img { width: 36px; height: 36px; object-fit: cover; border-radius: 50%; }
+.model-button[disabled] { opacity: 0.45; cursor: not-allowed; }
+.model-button:hover { transform: translateY(-2px); transition: transform 120ms ease; }
+
+/* compact label for accessibility on small screens */
+#model-buttons .env-toggle-svg textPath { font-size: 7px; }
 .env-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 8px; cursor: pointer; }
 .env-item:hover { background: rgba(0,0,0,0.04); }
 .env-item img { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; }

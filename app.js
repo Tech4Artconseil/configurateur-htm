@@ -2439,20 +2439,13 @@ async function createModelButtonsFromIndex(indexPath = 'Textures/index.json') {
         const items = Array.isArray(data.items) ? data.items : [];
         if (items.length === 0) return;
 
-        // Trouver la zone pour insérer les boutons (avant #color-buttons si possible)
-        const colorContainer = document.getElementById('color-buttons');
-        const parent = colorContainer ? colorContainer.parentElement : document.querySelector('#top-bar .btn-center');
-        if (!parent) return;
-
+        // Placer le container comme overlay à gauche du viewer
+        const viewerEl = document.getElementById('viewer') || document.body;
         let container = document.getElementById('model-buttons');
         if (!container) {
             container = document.createElement('div');
             container.id = 'model-buttons';
-            container.style.display = 'inline-flex';
-            container.style.gap = '8px';
-            // insert before color buttons to keep ordering
-            if (colorContainer && colorContainer.parentElement) colorContainer.parentElement.insertBefore(container, colorContainer);
-            else parent.appendChild(container);
+            viewerEl.appendChild(container);
         } else {
             container.innerHTML = '';
         }
@@ -2531,20 +2524,33 @@ async function createModelButtonsFromIndex(indexPath = 'Textures/index.json') {
 
 // Helper: cherche une miniature pour un dossier de modèle
 async function findModelThumbnail(folderName) {
+    // New rule: try thumbnail placed next to the GLB at site root with name <model>_Thumb.ext
+    const rootExts = ['jpg','jpeg','png','webp'];
+    const rootBaseCandidates = [ `${folderName}_Thumb`, `${folderName}_thumb`, `${folderName} _Thumb`, `${folderName}Thumb` ];
+    for (const baseName of rootBaseCandidates) {
+        for (const ext of rootExts) {
+            const p = `${baseName}.${ext}`; // e.g. 'SHINEO_bois_Thumb.jpg'
+            if (await checkImageExists(p)) return p;
+        }
+    }
+
+    // Fallback: legacy locations under Textures/<folder>/ (keep backward compatibility)
     const base = `Textures/${folderName}/`;
     const tryNames = ['thumb', 'preview', `${folderName}_thumb`, 'folder_thumb'];
-    const exts = ['jpg','png','webp','jpeg'];
+    const exts = rootExts;
     for (const n of tryNames) {
         for (const e of exts) {
             const p = `${base}${n}.${e}`;
             if (await checkImageExists(p)) return p;
         }
     }
-    // also try root-level thums
+
+    // still try pattern <folder>_thumb inside Textures/<folder>/ as last resort
     for (const e of exts) {
         const p = `${base}${folderName}_thumb.${e}`;
         if (await checkImageExists(p)) return p;
     }
+
     return null;
 
 }

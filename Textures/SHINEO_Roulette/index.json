@@ -19,5 +19,5 @@
       "defaultCode": "X001"
     }
   ],
-  "disabledItems": []
+  "disabledItems": ["Meca","Ground"]
 }

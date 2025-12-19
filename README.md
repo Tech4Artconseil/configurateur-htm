@@ -371,6 +371,19 @@ initializeEnvironment();
   - ▶ : Activer/désactiver autorotation
   - Boutons de couleur : Un bouton par partie configurable (généré dynamiquement selon `productParts`), pour changer la couleur
 
+### Sélecteur de modèles (boutons)
+
+Une fonctionnalité ajoute des boutons ronds permettant de charger directement des modèles 3D listés dans `Textures/index.json`.
+
+- Format attendu : `Textures/index.json` avec au moins `items: [ { "folder": "NAME", "displayName": "Label" }, ... ]` et optionnellement `disabledItems`.
+- Comportement : pour chaque `item.folder` le système crée un bouton. Au clic, `loadModelByName(folder)` est appelé et le fichier recherché est `/<folder>.glb` (fallback `.gltf`).
+- Miniatures : la fonction tente désormais de trouver une miniature placée au même niveau que le fichier GLB, nommée selon la convention `[modelName]_Thumb.(jpg|png|webp|jpeg)` (ex: `SHINEO_bois_Thumb.jpg`).
+  - Si cette miniature n'existe pas, la recherche retombe en fallback vers l'ancien emplacement `Textures/<folder>/thumb.jpg` (ou `.png/.webp`) via `findModelThumbnail()`.
+- Désactivation : listez les dossiers à masquer dans `disabledItems` du `index.json`.
+- Emplacement et style : le container créé est `#model-buttons` (overlay à gauche du viewer) et les boutons utilisent la classe `.model-button` (voir `styles.css`).
+- Intégration : l'implémentation réutilise `checkImageExists()`, `loadTextures()`, `generateColorButtons()` et les helpers d'UI existants (`showLoadingOverlay()`, `updateLoadingMessage()`, `hideLoadingOverlay()`).
+
+
   ## Aide & dépannage rapide
 
   Voici des conseils pratiques pour lancer, diagnostiquer et corriger les problèmes courants :
