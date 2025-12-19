@@ -2058,6 +2058,7 @@ function generateColorButtons() {
         if (modelDisabledParts.includes(part)) {
             return; // Ne pas créer l'interface pour cette partie
         }
+
         
         const codes = materialCodesPerPart[part] || [];
         const disabledCodes = disabledMaterialCodes[part] || [];
@@ -2561,6 +2562,20 @@ async function loadModelByName(name) {
     updateLoadingMessage(`Chargement du modèle ${name}...`);
     // update global modelName then detect extension
     modelName = name;
+    // recharger les index / configs spécifiques au modèle (utilisent la variable globale modelName)
+    try {
+        updateLoadingMessage('Scan des textures...');
+        await scanMaterialCodes();               // met à jour materialCodesPerPart
+        updateLoadingMessage('Chargement configurations désactivation...');
+        await loadDisabledConfigurations();     // met à jour disabledModelItems / disabledPartItems / disabledMaterialCodes
+        // optionnel : rescanner les env maps si vous voulez que l'UI env soit rafraîchie
+        // updateLoadingMessage('Scan des environment maps...');
+        // await scanEnvironmentMaps();
+    } catch (e) {
+        log(`Erreur lors du refresh des configs pour ${name}: ${e && e.message ? e.message : e}`, 'warning');
+    }
+
+
     await detectModelExtension();
     const modelFile = `${modelName}.${modelExtension}`;
     try {
@@ -2587,6 +2602,8 @@ async function loadModelFile(modelFile) {
                     try { scene.remove(model); } catch (e) {}
                     model = null;
                 }
+
+                
                 model = gltf.scene;
                 model.visible = false;
                 scene.add(model);
@@ -2600,6 +2617,13 @@ async function loadModelFile(modelFile) {
                 });
 
                 await Promise.all(initialLoadPromises);
+                // charger dossiers additionnels listés dans Textures/<modelName>/index.json
+                try {
+                    updateLoadingMessage('Chargement dossiers additionnels...');
+                    await loadOtherTextureFoldersAndApply();
+                } catch (err) {
+                    log(`Erreur lors du chargement des dossiers additionnels pour ${modelName}: ${err && err.message ? err.message : err}`, 'warning');
+                }
 
                 // regenerate color buttons if any
                 try { generateColorButtons(); } catch (e) { /* ignore */ }
