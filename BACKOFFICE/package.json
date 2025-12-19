@@ -5,7 +5,7 @@
   "main": "scripts/generate-index.js",
   "type": "module",
   "scripts": {
-    "poc": "node scripts/generate-index.js --root Textures/shineo --write",
+    "poc": "node scripts/generate-index.js --root Textures/2 --write",
     "poc2": "node scripts/generate-index.js --root Textures/shineo ",
     "test": "node tests/run-poc-test.js",
     "test:integration": "node tests/integration-real-folder-test.js",

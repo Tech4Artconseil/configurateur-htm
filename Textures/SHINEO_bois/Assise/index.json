@@ -9,7 +9,10 @@
     "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
   },
   "codes": [
-    "shineo_tissu_gr",
-    "shineo_tissu_gr002"
-  ]
+    "Bleu",
+    "Gris",
+    "Jaune",
+    "Rouge"
+  ],
+  "disabledCodes": []
 }

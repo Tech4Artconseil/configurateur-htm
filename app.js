@@ -224,6 +224,7 @@ let useEnvironmentMap = true;  // true = Utiliser une environment map, false = U
 let environmentMapPath = 'Textures/environement/Env_01.exr' //null;  // Chemin vers l'environment map HDR (ex: 'environment.hdr') ou null pour couleur unie
 let envMapIntensity = 1.0;  // Intensité de l'environment map en mode Lit (0.0 à 2.0+)
 let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.PI * 2)
+let useEnvironmentUI = false;  // true = Afficher le sélecteur d'env maps dans l'UI, false = Ne pas afficher
 // Mode Unlit : utilise ambientLightIntensity et backgroundColor comme équivalence
 let backgroundColorUnlit = 0xffffff;  // Couleur de fond en mode Unlit (équivalent envMap)
 let ambientLightIntensityUnlit = 0.5;  // Intensité ambiante en mode Unlit (équivalent envMapIntensity)
@@ -721,8 +722,17 @@ detectModelExtension()
     .then(() => { updateLoadingMessage('Chargement configurations désactivation...'); return loadDisabledConfigurations(); })
     .then(() => { updateLoadingMessage('Scan des environment maps...'); return scanEnvironmentMaps(); })
     .then(() => {
-        // Générer l'interface après avoir scanné les environment maps
-        generateEnvironmentSelector();
+        // Générer l'interface après avoir scanné les environment maps.
+        // Si l'UI d'environment n'est pas utilisée, masquer le <select> natif
+        const envSelect = document.getElementById('environment-selector');
+        if (useEnvironmentUI) {
+            generateEnvironmentSelector();
+            // le sélecteur personnalisé gère lui-même l'affichage, masquer le select natif
+            if (envSelect) envSelect.style.display = 'none';
+        } else {
+            // masquer le select natif pour éviter le bouton ovale "Chargement..."
+            if (envSelect) envSelect.style.display = 'none';
+        }
     })
     .then(() => {
     const modelFile = `${modelName}.${modelExtension}`;
