@@ -62,7 +62,8 @@ function productTemplate(childDirs) {
       "contraintes": "Le dossier doit exister et contenir un index.json avec codes",
       "impact": "Les textures seront appliquées aux matériaux GLB portant le même nom que 'folder'"
     },
-    "items": childDirs.map(d => ({ folder: d, displayName: `Options ${d}`, defaultCode: 'X001' }))
+    "items": childDirs.map(d => ({ folder: d, displayName: `Options ${d}`, defaultCode: 'X001' })),
+    "disabledItems": []
   };
 }
 
@@ -70,7 +71,8 @@ function genericTemplate(items) {
   return {
     "_comment": "CONFIGURATEUR - Index auto-généré",
     "_help": { "role": "Index auto-généré - à adapter manuellement si besoin" },
-    "items": items
+    "items": items,
+    "disabledItems": []
   };
 }
 
@@ -85,7 +87,9 @@ function texturesTemplate(codes, partName = "PARTIE") {
       "impact": "Premier code = sélection par défaut au démarrage. Génère les boutons couleur dans l'interface",
       "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
     },
-    "codes": codes
+    "codes": codes ,
+    "disabledCodes": []
+
   };
 }
 
