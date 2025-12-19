@@ -733,6 +733,8 @@ detectModelExtension()
             // masquer le select natif pour éviter le bouton ovale "Chargement..."
             if (envSelect) envSelect.style.display = 'none';
         }
+            // Générer les boutons de sélection de modèles si un index est présent
+            try { createModelButtonsFromIndex('Textures/index.json'); } catch (e) { /* ignore */ }
     })
     .then(() => {
     const modelFile = `${modelName}.${modelExtension}`;
@@ -2426,6 +2428,190 @@ function generateEnvironmentSelector() {
 
     // Apply circular label defaults for environment toggle when ready
     try { applyLabelOptionsWhenReady('env-dropdown', CIRCULAR_LABEL_DEFAULTS_ENV); } catch (e) { /* ignore */ }
+}
+
+// Crée des boutons ronds pour chaque modèle listé dans Textures/index.json
+async function createModelButtonsFromIndex(indexPath = 'Textures/index.json') {
+    try {
+        const resp = await fetch(indexPath);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (items.length === 0) return;
+
+        // Trouver la zone pour insérer les boutons (avant #color-buttons si possible)
+        const colorContainer = document.getElementById('color-buttons');
+        const parent = colorContainer ? colorContainer.parentElement : document.querySelector('#top-bar .btn-center');
+        if (!parent) return;
+
+        let container = document.getElementById('model-buttons');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'model-buttons';
+            container.style.display = 'inline-flex';
+            container.style.gap = '8px';
+            // insert before color buttons to keep ordering
+            if (colorContainer && colorContainer.parentElement) colorContainer.parentElement.insertBefore(container, colorContainer);
+            else parent.appendChild(container);
+        } else {
+            container.innerHTML = '';
+        }
+
+        // disabled list support
+        const disabled = Array.isArray(data.disabledItems) ? data.disabledItems : [];
+
+        for (const it of items) {
+            const folder = it.folder || it.name;
+            const label = it.displayName || folder;
+            if (!folder) continue;
+
+            const btn = document.createElement('button');
+            btn.className = 'env-dropdown-toggle model-button';
+            btn.type = 'button';
+            btn.title = label;
+
+            const img = document.createElement('img');
+            img.alt = folder;
+            img.style.display = 'none';
+            btn.appendChild(img);
+
+            // simple circular text using SVG (reuse pattern)
+            const SVG_NS = 'http://www.w3.org/2000/svg';
+            const uniqueId = `model-path-${Math.random().toString(36).slice(2,9)}`;
+            const svg = document.createElementNS(SVG_NS, 'svg');
+            svg.setAttribute('viewBox', '0 0 100 100');
+            svg.setAttribute('class', 'env-toggle-svg');
+            svg.setAttribute('aria-hidden', 'true');
+            const defs = document.createElementNS(SVG_NS, 'defs');
+            const path = document.createElementNS(SVG_NS, 'path');
+            path.setAttribute('id', uniqueId);
+            path.setAttribute('d', 'M50,50 m0,-36 a36,36 0 1,1 -0.01,0');
+            defs.appendChild(path);
+            svg.appendChild(defs);
+            const text = document.createElementNS(SVG_NS, 'text');
+            const textPath = document.createElementNS(SVG_NS, 'textPath');
+            textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${uniqueId}`);
+            textPath.setAttribute('startOffset', '50%');
+            textPath.setAttribute('text-anchor', 'middle');
+            textPath.textContent = label;
+            text.appendChild(textPath);
+            svg.appendChild(text);
+            btn.appendChild(svg);
+
+            // attach click handler to load the model
+            btn.addEventListener('click', async () => {
+                try {
+                    await loadModelByName(folder);
+                } catch (e) {
+                    log(`Erreur chargement modèle ${folder}: ${e && e.message ? e.message : e}`, 'warning');
+                }
+            });
+
+            // disabled
+            if (disabled.includes(folder)) {
+                btn.disabled = true;
+                btn.title = `${label} (désactivé)`;
+            }
+
+            // try to find thumbnail
+            (async () => {
+                try {
+                    const thumb = await findModelThumbnail(folder);
+                    if (thumb) { img.src = thumb; img.style.display = ''; }
+                } catch (e) { /* ignore */ }
+            })();
+
+            container.appendChild(btn);
+        }
+
+    } catch (e) {
+        // ignore failures
+    }
+}
+
+// Helper: cherche une miniature pour un dossier de modèle
+async function findModelThumbnail(folderName) {
+    const base = `Textures/${folderName}/`;
+    const tryNames = ['thumb', 'preview', `${folderName}_thumb`, 'folder_thumb'];
+    const exts = ['jpg','png','webp','jpeg'];
+    for (const n of tryNames) {
+        for (const e of exts) {
+            const p = `${base}${n}.${e}`;
+            if (await checkImageExists(p)) return p;
+        }
+    }
+    // also try root-level thums
+    for (const e of exts) {
+        const p = `${base}${folderName}_thumb.${e}`;
+        if (await checkImageExists(p)) return p;
+    }
+    return null;
+
+}
+
+// Charge un modèle par nom (sans extension)
+async function loadModelByName(name) {
+    showLoadingOverlay('Chargement modèle...');
+    updateLoadingMessage(`Chargement du modèle ${name}...`);
+    // update global modelName then detect extension
+    modelName = name;
+    await detectModelExtension();
+    const modelFile = `${modelName}.${modelExtension}`;
+    try {
+        await loadModelFile(modelFile);
+    } catch (e) {
+        log(`Erreur loadModelByName(${name}): ${e && e.message ? e.message : e}`, 'warning');
+        hideLoadingOverlay();
+        throw e;
+    }
+}
+
+// Charge un fichier GLB/GLTF et applique textures basiques
+async function loadModelFile(modelFile) {
+    return new Promise((resolve, reject) => {
+        const loader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        loader.setDRACOLoader(dracoLoader);
+
+        loader.load(modelFile, async (gltf) => {
+            try {
+                // remove previous model
+                if (model) {
+                    try { scene.remove(model); } catch (e) {}
+                    model = null;
+                }
+                model = gltf.scene;
+                model.visible = false;
+                scene.add(model);
+                updateLoadingMessage('Modèle chargé, préparation...');
+                updateLoadingProgress(10);
+
+                // Try to apply textures for configured productParts
+                const initialLoadPromises = productParts.map(part => {
+                    updateLoadingMessage(`Chargement textures: ${part}`);
+                    return loadTextures(part, currentColorIndex[part] || 0).catch(e => { log(`Erreur chargement textures pour ${part}: ${e && e.message ? e.message : e}`, 'warning'); return null; });
+                });
+
+                await Promise.all(initialLoadPromises);
+
+                // regenerate color buttons if any
+                try { generateColorButtons(); } catch (e) { /* ignore */ }
+
+                // frame model
+                try { frameModel(model, { fill: initialCameraFill, azimuthDeg: initialOrbitDeg, cameraHeight: initialCameraHeight, focalLengthMm: initialFocalLengthMm }); } catch (e) {}
+
+                model.visible = true;
+                updateLoadingProgress(100);
+                hideLoadingOverlay();
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        }, undefined, (error) => {
+            reject(error);
+        });
+    });
 }
 
 // (duplicate helper removed — implementation kept earlier near UI generation)
