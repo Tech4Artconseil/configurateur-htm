@@ -11,5 +11,8 @@
   "codes": [
     "shineo_tissu_gr",
     "shineo_tissu_gr002"
+  ],
+  "disabledCodes": [
+    "shineo_tissu_gr002"
   ]
 }

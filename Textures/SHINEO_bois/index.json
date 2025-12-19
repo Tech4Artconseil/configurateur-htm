@@ -23,5 +23,5 @@
       "displayName": "Options Socle",
       "defaultCode": "metal_noir"
     }
-  ]
+  ],  "disabledItems": ["Socle","Ground"]
 }

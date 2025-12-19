@@ -153,6 +153,35 @@ toneMappingExposureLit = 1.0;  // Ajuster selon l'éclairage
   - `THREE.LinearSRGBColorSpace` : Rendu linéaire
   - `THREE.DisplayP3ColorSpace` : Pour écrans Wide Gamut (Apple, certains écrans HDR)
 
+
+
+### UI du configurateur 
+Listes de désactivation pour l'interface utilisateur (ne affectent pas le chargement des textures)
+- disabledModelItems = []; // Modèles désactivés dans Textures/index.json
+- disabledPartItems = {}; // Parties désactivées par modèle dans Textures/{model}/index.json  
+- disabledMaterialCodes = {}; // Codes désactivés par partie dans Textures/{model}/{part}/index.json
+✅ Fonctione pour tous les niveaux du produit.
+✅ Textures toujours chargeables : Les codes/parties désactivés restent utilisables techniquement
+✅ Interface filtrée : Seuls les éléments actifs apparaissent dans l'UI
+✅ Rétrocompatible : Les JSON sans disabled* fonctionnent normalement
+✅ Logs informatifs : Indique ce qui est masqué
+
+Exemples de JSON testés :
+Pour désactiver des codes dans une partie :
+ ```json{
+  "codes": ["shineo_tissu_gr", "shineo_tissu_gr002"],
+  "disabledCodes": ["shineo_tissu_gr002"]
+} ```
+Pour désactiver des parties :
+ ```json{
+  "items": [
+    {"folder": "Assise", "displayName": "Options Assise"},
+    {"folder": "Socle", "displayName": "Options Socle"}
+  ],
+  "disabledItems": ["Socle"]
+} ```
+
+
 ### Gestion de l'environnement
 Le système permet de configurer l'environnement de la scène de manière différente selon le mode d'éclairage.
 

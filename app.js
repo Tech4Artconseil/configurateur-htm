@@ -84,9 +84,9 @@ const texturePreviewContainerId = 'texture-preview-panel';
 // Correction spécifique navigateur
 
 // Activer/désactiver l'affichage des logs dans le viewer (true = logs activés)
-let enableLogging = true;
+let enableLogging = false;
 // Activer/désactiver les logs spécifiques au chargement/gestion des textures
-let enableTextureLogging = true;
+let enableTextureLogging = false;
 
 // Met à jour la visibilité de l'UI de logs selon `enableLogging`.
 function updateLogUIVisibility() {
@@ -325,6 +325,81 @@ let currentColorIndex = {}; // Index dans le tableau de codes
 
 // Liste des environment maps disponibles (détectées automatiquement)
 let availableEnvironmentMaps = [];
+
+// Listes de désactivation pour l'interface utilisateur (ne affectent pas le chargement des textures)
+let disabledModelItems = []; // Modèles désactivés dans Textures/index.json
+let disabledPartItems = {}; // Parties désactivées par modèle dans Textures/{model}/index.json
+let disabledMaterialCodes = {}; // Codes désactivés par partie dans Textures/{model}/{part}/index.json
+
+// Fonction pour charger toutes les configurations de désactivation depuis les JSON
+async function loadDisabledConfigurations() {
+    log('Chargement des configurations de désactivation...');
+    
+    try {
+        // 1. Charger les modèles désactivés depuis Textures/index.json
+        const rootIndexPath = 'Textures/index.json';
+        try {
+            const rootResp = await fetch(rootIndexPath);
+            if (rootResp.ok) {
+                const rootData = await rootResp.json();
+                disabledModelItems = Array.isArray(rootData.disabledItems) ? rootData.disabledItems : [];
+                if (disabledModelItems.length > 0) {
+                    log(`⚠ ${disabledModelItems.length} modèle(s) désactivé(s): ${disabledModelItems.join(', ')}`);
+                }
+            }
+        } catch (e) {
+            log(`Impossible de lire ${rootIndexPath} pour les modèles désactivés`, 'warning');
+        }
+        
+        // 2. Charger les parties désactivées depuis Textures/{modelName}/index.json
+        const modelIndexPath = `Textures/${modelName}/index.json`;
+        try {
+            const modelResp = await fetch(modelIndexPath);
+            if (modelResp.ok) {
+                const modelData = await modelResp.json();
+                disabledPartItems[modelName] = Array.isArray(modelData.disabledItems) ? modelData.disabledItems : [];
+                if (disabledPartItems[modelName].length > 0) {
+                    log(`⚠ ${disabledPartItems[modelName].length} partie(s) désactivée(s) pour ${modelName}: ${disabledPartItems[modelName].join(', ')}`);
+                }
+            }
+        } catch (e) {
+            log(`Impossible de lire ${modelIndexPath} pour les parties désactivées`, 'warning');
+        }
+        
+        // 3. Charger les codes désactivés depuis Textures/{modelName}/{part}/index.json pour chaque partie
+        for (const part of productParts) {
+            const partIndexPath = `Textures/${modelName}/${part}/index.json`;
+            try {
+                const partResp = await fetch(partIndexPath);
+                if (partResp.ok) {
+                    const partData = await partResp.json();
+                    disabledMaterialCodes[part] = Array.isArray(partData.disabledCodes) ? partData.disabledCodes : [];
+                    if (disabledMaterialCodes[part].length > 0) {
+                        log(`⚠ ${disabledMaterialCodes[part].length} code(s) désactivé(s) pour ${part}: ${disabledMaterialCodes[part].join(', ')}`);
+                    }
+                } else {
+                    // Si pas de fichier index.json, initialiser avec array vide
+                    disabledMaterialCodes[part] = [];
+                }
+            } catch (e) {
+                // En cas d'erreur, initialiser avec array vide
+                disabledMaterialCodes[part] = [];
+                log(`Impossible de lire ${partIndexPath} pour les codes désactivés de ${part}`, 'warning');
+            }
+        }
+        
+        log('Configurations de désactivation chargées');
+        
+    } catch (e) {
+        log(`Erreur lors du chargement des configurations de désactivation: ${e && e.message ? e.message : e}`, 'warning');
+        // En cas d'erreur générale, initialiser avec des valeurs par défaut
+        disabledModelItems = [];
+        disabledPartItems[modelName] = [];
+        productParts.forEach(part => {
+            disabledMaterialCodes[part] = [];
+        });
+    }
+}
 
 // Fonction pour scanner les dossiers de textures et extraire les codes matériaux
 async function scanMaterialCodes() {
@@ -643,6 +718,7 @@ showLoadingOverlay('Initialisation...');
 // Détecter l'extension, scanner les textures et environment maps, puis charger le modèle
 detectModelExtension()
     .then(() => { updateLoadingMessage('Scan des textures...'); return scanMaterialCodes(); })
+    .then(() => { updateLoadingMessage('Chargement configurations désactivation...'); return loadDisabledConfigurations(); })
     .then(() => { updateLoadingMessage('Scan des environment maps...'); return scanEnvironmentMaps(); })
     .then(() => {
         // Générer l'interface après avoir scanné les environment maps
@@ -806,6 +882,9 @@ detectModelExtension()
             log(`Erreur lors du chargement des dossiers additionnels: ${err && err.message ? err.message : err}`, 'warning');
         }
 
+        // Générer les boutons de couleur dynamiquement (après le chargement complet)
+        generateColorButtons();
+
         // Tout est chargé : afficher le modèle d'un seul coup
         try {
             updateLoadingMessage('Finalisation...');
@@ -837,9 +916,6 @@ detectModelExtension()
                 .catch((error) => { log(`⚠ Impossible de charger l'environment map par défaut: ${error.message}`, 'warning'); });
         }
     }
-    
-    // Générer les boutons de couleur dynamiquement (après le chargement)
-    generateColorButtons();
 }, undefined, (error) => {
     log(`Erreur chargement ${modelExtension.toUpperCase()}: ${error.message}`, 'error');
     console.error(`Erreur chargement ${modelExtension.toUpperCase()}:`, error);
@@ -1965,7 +2041,14 @@ function generateColorButtons() {
     colorButtonsDiv.innerHTML = '';
 
     productParts.forEach(part => {
+        // Vérifier si cette partie est désactivée pour ce modèle
+        const modelDisabledParts = disabledPartItems[modelName] || [];
+        if (modelDisabledParts.includes(part)) {
+            return; // Ne pas créer l'interface pour cette partie
+        }
+        
         const codes = materialCodesPerPart[part] || [];
+        const disabledCodes = disabledMaterialCodes[part] || [];
         const container = document.createElement('div');
         container.className = 'color-dropdown';
         container.id = `${part.toLowerCase()}-color-dropdown`;
@@ -2018,6 +2101,9 @@ function generateColorButtons() {
         const menu = document.createElement('div');
         menu.className = 'color-dropdown-menu';
 
+        // Filtrer les codes désactivés pour l'UI
+        const activeCodes = codes.filter(code => !disabledCodes.includes(code));
+
         // Create swatch items
         if (codes.length === 0) {
             const none = document.createElement('div');
@@ -2026,11 +2112,14 @@ function generateColorButtons() {
             none.style.color = '#333';
             menu.appendChild(none);
         } else {
-            codes.forEach((code, idx) => {
+            activeCodes.forEach((code, uiIndex) => {
+                // uiIndex est l'index dans la liste filtrée, mais on a besoin de l'index réel dans codes
+                const realIndex = codes.indexOf(code);
+                
                 const item = document.createElement('button');
                 item.className = 'color-swatch-btn';
                 item.type = 'button';
-                item.dataset.index = idx;
+                item.dataset.index = realIndex; // Stocker l'index réel pour le chargement des textures
                 item.title = code;
 
                 const s = document.createElement('div');
@@ -2038,7 +2127,7 @@ function generateColorButtons() {
 
                 // placeholder green with index if no thumb will be applied later
                 s.style.background = '#9ae69a';
-                s.textContent = String(idx + 1);
+                s.textContent = String(uiIndex + 1);
                 s.style.fontSize = '10px';
                 s.style.color = '#000';
                 s.style.display = 'flex';
@@ -2056,7 +2145,7 @@ function generateColorButtons() {
                     lbl.style.fontSize = '10px';
                     lbl.style.marginTop = '4px';
                     lbl.style.textAlign = 'center';
-                    lbl.textContent = String(fmt).replace('${code}', code).replace('${index}', String(idx + 1));
+                    lbl.textContent = String(fmt).replace('${code}', code).replace('${index}', String(uiIndex + 1));
                     lbl.style.display = showCode ? '' : 'none';
                     item.appendChild(lbl);
                 } catch (e) {
@@ -2079,14 +2168,14 @@ function generateColorButtons() {
                 })();
 
                 item.addEventListener('click', () => {
-                    currentColorIndex[part] = idx;
+                    currentColorIndex[part] = realIndex;
                     const materialCode = materialCodesPerPart[part][currentColorIndex[part]];
                     log(`Changement ${part}: ${materialCode}`);
                     loadTextures(part, currentColorIndex[part]);
                     // close
                     container.classList.remove('open');
                     // update toggle swatch immediately if server swatch exists
-                    updateToggleSwatch(part, idx);
+                    updateToggleSwatch(part, realIndex);
                 });
 
                 menu.appendChild(item);
@@ -2135,7 +2224,7 @@ function generateColorButtons() {
             }
         })();
 
-        log(`✓ Dropdown créé pour ${part} avec ${codes.length} options`);
+        log(`✓ Dropdown créé pour ${part} avec ${activeCodes.length} options actives (${codes.length} codes chargés)`);
     });
 }
 
