@@ -8,5 +8,10 @@
     "impact": "Premier code = sélection par défaut au démarrage. Génère les boutons couleur dans l'interface",
     "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
   },
-  "codes": ["F001", "F002", "F003", "F004"]
+  "codes": [
+    "F001",
+    "F002",
+    "F003",
+    "F004"
+  ]
 }

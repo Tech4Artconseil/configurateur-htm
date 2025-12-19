@@ -1,34 +1,11 @@
-[
-  {
-    "_comment": "CONFIGURATEUR 3D - Index ENVIRONMENT MAPS",
-    "_help": {
-      "role": "Catalogue des environment maps avec métadonnées pour éclairage 360°",
-      "format": "Array d'objets avec: name, file, type, displayName, thumb",
-      "exemple": "Ajouter nouvelle env: {name: 'Studio', file: 'Studio.hdr', type: 'hdr', displayName: 'Éclairage Studio', thumb: 'Studio_thumb.jpg'}",
-      "contraintes": "Fichiers HDR/EXR doivent exister. Miniatures recommandées (JPG 256x128px max)",
-      "impact": "Premier élément = environment par défaut au démarrage. Génère menu déroulant environnement",
-      "formats_supportes": "HDR (RGBELoader), EXR (EXRLoader), JPG/PNG (TextureLoader)"
-    }
+{
+  "_comment": "CONFIGURATEUR 3D - Index niveau PRODUIT",
+  "_help": {
+    "role": "Liste les dossiers additionnels à charger automatiquement (non inclus dans productParts)",
+    "format": "Array d'objets avec: folder (nom dossier), displayName (affichage), defaultCode (code par défaut)",
+    "exemple": "Pour ajouter un dossier 'Accessoire': {folder: 'Accessoire', displayName: 'Options Accessoires', defaultCode: 'ACC001'}",
+    "contraintes": "Le dossier doit exister et contenir un index.json avec codes",
+    "impact": "Les textures seront appliquées aux matériaux GLB portant le même nom que 'folder'"
   },
-  {
-    "name": "Default",
-    "file": "Default.hdr",
-    "type": "hdr",
-    "displayName": "Default",
-    "thumb": "Default_thumb.jpg"
-  },
-  {
-    "name": "Env_01",
-    "file": "Env_01.exr",
-    "type": "exr",
-    "displayName": "Env 01",
-    "thumb": "Env_01_thumb.jpg"
-  },
-  {
-    "name": "Env_02",
-    "file": "Env_02.exr",
-    "type": "exr",
-    "displayName": "Env 02",
-    "thumb": "Env_02_thumb.jpg"
-  }
-]
+  "items": ["Env_01"]
+}

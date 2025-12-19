@@ -108,6 +108,7 @@ Note importante — valeur par défaut pour les options couleurs
   - `enabled: true/false` : Active ou désactive le chargement de ce canal
   - `extensions: ['jpg', 'png']` : Ordre de priorité des extensions à essayer
   - `flipY: true/false` : Retourne la texture verticalement (false = orientation originale)
+  - 'textureFilePrefix' : frefix des nom de fichiers de textures. Par defaut a ''(vide).
 
 ### Mode d'éclairage et rendu
 #### Mode Unlit vs Lit

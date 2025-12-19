@@ -1,13 +1,14 @@
 {
-  "_comment": "CONFIGURATEUR 3D - Index niveau PARTIE (Autre)", 
+  "_comment": "CONFIGURATEUR 3D - Index niveau PARTIE (Autre)",
   "_help": {
-    "role": "Liste les codes matériaux pour dossier additionnel (pas d'interface utilisateur)",
-    "format": "Array de codes alphanumériques. Appliqué automatiquement, pas de sélection manuelle",
-    "exemple": "Ajouter nouvelle option: 'X002' (nécessite fichiers Color_X002_*.jpg)",
-    "contraintes": "Dossier référencé dans index.json niveau produit. Pas de vignettes générées",
-    "impact": "Textures appliquées aux matériaux GLB nommés 'Autre'. Premier code utilisé par défaut",
-    "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc."
+    "role": "Liste les codes matériaux disponibles pour cette partie configurable",
+    "format": "Array de codes alphanumériques (1 lettre + 3 chiffres). Ordre = ordre d'affichage dans l'UI",
+    "exemple": "Ajouter nouveau tissu: 'F005' (nécessite fichiers Color_F005_Albedo.jpg, etc.)",
+    "contraintes": "Chaque code doit avoir ses fichiers textures correspondants dans ce dossier",
+    "impact": "Premier code = sélection par défaut au démarrage. Génère les boutons couleur dans l'interface",
+    "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
   },
-  "codes": ["X001"]
+  "codes": [
+    "X001"
+  ]
 }
-

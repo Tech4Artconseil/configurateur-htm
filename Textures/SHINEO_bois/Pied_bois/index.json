@@ -1,0 +1,15 @@
+{
+  "_comment": "CONFIGURATEUR 3D - Index niveau PARTIE (Pied_bois)",
+  "_help": {
+    "role": "Liste les codes matériaux disponibles pour cette partie configurable",
+    "format": "Array de codes alphanumériques (1 lettre + 3 chiffres). Ordre = ordre d'affichage dans l'UI",
+    "exemple": "Ajouter nouveau tissu: 'F005' (nécessite fichiers Color_F005_Albedo.jpg, etc.)",
+    "contraintes": "Chaque code doit avoir ses fichiers textures correspondants dans ce dossier",
+    "impact": "Premier code = sélection par défaut au démarrage. Génère les boutons couleur dans l'interface",
+    "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
+  },
+  "codes": [
+    "bois_blanc",
+    "bois_Noir"    
+  ]
+}

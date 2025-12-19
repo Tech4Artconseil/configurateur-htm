@@ -74,21 +74,66 @@ function genericTemplate(items) {
   };
 }
 
+function texturesTemplate(codes, partName = "PARTIE") {
+  return {
+    "_comment": `CONFIGURATEUR 3D - Index niveau PARTIE (${partName})`,
+    "_help": {
+      "role": "Liste les codes matériaux disponibles pour cette partie configurable",
+      "format": "Array de codes alphanumériques (1 lettre + 3 chiffres). Ordre = ordre d'affichage dans l'UI",
+      "exemple": "Ajouter nouveau tissu: 'F005' (nécessite fichiers Color_F005_Albedo.jpg, etc.)",
+      "contraintes": "Chaque code doit avoir ses fichiers textures correspondants dans ce dossier",
+      "impact": "Premier code = sélection par défaut au démarrage. Génère les boutons couleur dans l'interface",
+      "fichiers_requis": "Color_<CODE>_Albedo.jpg, Color_<CODE>_NormalGL.png, etc. selon textureChannels activés"
+    },
+    "codes": codes
+  };
+}
+
 async function generateForDir(dirPath, depthFromRoot, options) {
   const { dirs, files } = await listDir(dirPath);
   let content = null;
 
-  if (depthFromRoot === 1) {
+  // Détecter si c'est un dossier de texture sets (pattern Color_XXX_Channel)
+  const textureFiles = files.filter(f => /\.(png|jpg|jpeg|exr|hdr)$/i.test(f));
+  const baseNames = textureFiles.map(f => path.parse(f).name);
+  const hasImages = textureFiles.length > 0;
+  //const colorPattern = /^Color_([A-Z]\d{3})_/i;
+  const colorCodes = new Set();
+  const isLeafTextureFolder = hasImages
+  let isTextureSetFolder = false;
+  if (isLeafTextureFolder) {isTextureSetFolder = true;}
+  
+  
+
+  if (isTextureSetFolder) {
+    const partName = path.basename(dirPath);
+    const colorCodes = new Set();
+    
+    // Extraire les codes depuis les noms d'images (préfixe avant dernier underscore)
+    for (const name of baseNames) {
+      const idx = name.lastIndexOf('_');
+      if (idx > 0) {
+        // Prendre tout ce qui est avant le dernier underscore
+        // Ex: "bois_blanc_Albedo" → "bois_blanc"
+        const prefix = name.slice(0, idx);
+        colorCodes.add(prefix);
+      } else {
+        // Pas d'underscore, prendre le nom complet
+        colorCodes.add(name);
+      }
+    }
+    // Convertir le Set en Array et trier
+    const codes = Array.from(colorCodes).sort();
+    content = texturesTemplate(codes, partName);
+
+  } else if (depthFromRoot === 1) {
     // Produits niveau → use product template
     content = productTemplate(dirs);
   } else if (dirs.length > 0) {
     // Folder with children → list child folders
     content = genericTemplate(dirs.map(d => ({ folder: d, displayName: d })));
   } else {
-    // Leaf → gather texture codes from files
-    const textureFiles = files.filter(f => /\.(png|jpg|jpeg|exr|hdr)$/i.test(f));
-    const baseNames = textureFiles.map(f => path.parse(f).name);
-    // Collapse texture sets by taking the prefix before the last underscore
+    // Autre type de dossier → garder le comportement générique
     const prefixes = baseNames.map(n => {
       const idx = n.lastIndexOf('_');
       return idx > 0 ? n.slice(0, idx) : n;

@@ -40,6 +40,8 @@ let autoRotateSpeed = 0.5;
 let backgroundColor = 0xffffff;
 // Rendu transparent (le canvas du viewer montrera le contenu HTML en dessous)
 let transparentBackground = true;
+//frefix des nom de fichiers de textures
+let textureFilePrefix = '';//'Color_';
 
 // Contrôles de positionnement initial de la caméra
 // focal length en mm (ex : 70 mm) — sera converti en FOV via camera.setFocalLength()
@@ -82,7 +84,7 @@ const texturePreviewContainerId = 'texture-preview-panel';
 // Correction spécifique navigateur
 
 // Activer/désactiver l'affichage des logs dans le viewer (true = logs activés)
-let enableLogging = false;
+let enableLogging = true;
 // Activer/désactiver les logs spécifiques au chargement/gestion des textures
 let enableTextureLogging = true;
 
@@ -211,15 +213,15 @@ let toneMappingLit = THREE.ACESFilmicToneMapping;  // Mode Lit: ACESFilmicToneMa
 //THREE.NoToneMapping  //THREE.LinearToneMapping  //THREE.ReinhardToneMapping  //THREE.CinematicToneMapping  //THREE.ACESFilmicToneMapping
 
 let toneMappingExposureUnlit = 1.0;  // Exposition en mode Unlit (1.0 = neutre, 0.5 = sombre, 2.0 = lumineux)
-let toneMappingExposureLit = 1.0;  // Exposition en mode Lit (ajuster selon l'éclairage de la scène)
+let toneMappingExposureLit = 5.0;  // Exposition en mode Lit (ajuster selon l'éclairage de la scène)
 // Color Space des textures - Options: THREE.SRGBColorSpace (recommandé pour couleurs), THREE.LinearSRGBColorSpace (pour données linéaires)
 let textureColorSpace = THREE.SRGBColorSpace;  // sRGB recommandé pour textures albedo/couleur
 // Output Color Space - Options: THREE.SRGBColorSpace (standard écran), THREE.LinearSRGBColorSpace (rendu linéaire), THREE.DisplayP3ColorSpace (écrans P3)
 let outputColorSpace = THREE.SRGBColorSpace;  // Output sRGB recommandé pour affichage écran standard
 
 // Configuration de l'environnement
-let useEnvironmentMap = false;  // true = Utiliser une environment map, false = Utiliser la couleur de fond
-let environmentMapPath = null;  // Chemin vers l'environment map HDR (ex: 'environment.hdr') ou null pour couleur unie
+let useEnvironmentMap = true;  // true = Utiliser une environment map, false = Utiliser la couleur de fond
+let environmentMapPath = 'Textures/environement/Env_01.exr' //null;  // Chemin vers l'environment map HDR (ex: 'environment.hdr') ou null pour couleur unie
 let envMapIntensity = 1.0;  // Intensité de l'environment map en mode Lit (0.0 à 2.0+)
 let envMapRotation = 0;  // Rotation de l'environment map en radians (0 à Math.PI * 2)
 // Mode Unlit : utilise ambientLightIntensity et backgroundColor comme équivalence
@@ -314,9 +316,9 @@ let ambientLight;
 let directionalLight;
 
 // Variables pour le produit
-let modelName = 'fauteuil'; // Nom du modèle, sans extension
+let modelName = 'SHINEO_bois'//'fauteuil'; // Nom du modèle, sans extension
 let modelExtension = null; // Extension détectée automatiquement (glb ou gltf)
-let productParts = ['Pied', 'Assise']//,'Autre']; // Tableau des parties configurables du produit
+let productParts = ['Socle','Pied_bois', 'Assise','Ground']//['Pied', 'Assise']//,'Autre']; // Tableau des parties configurables du produit
 // Codes de matériaux disponibles par partie (détectés automatiquement)
 let materialCodesPerPart = {};
 let currentColorIndex = {}; // Index dans le tableau de codes
@@ -337,23 +339,39 @@ async function scanMaterialCodes() {
             const response = await fetch(`${basePath}index.json`);
             if (response.ok) {
                 const data = await response.json();
-                materialCodesPerPart[part] = data.codes || [];
-                currentColorIndex[part] = 0;
-                log(`✓ Codes chargés pour ${part}: ${data.codes.join(', ')}`);
-                continue;
+                // Vérifier le nouveau format avec "codes"
+                if (data && Array.isArray(data.codes) && data.codes.length > 0) {
+                    materialCodesPerPart[part] = data.codes;
+                    currentColorIndex[part] = 0;
+                    log(`✓ Codes chargés pour ${part} depuis ${modelName}/${part}/index.json: ${data.codes.join(', ')}`);
+                    continue; // Passer au dossier suivant, pas besoin de scan
+                }
+                // Support pour l'ancien format "items" si nécessaire
+                else if (data && Array.isArray(data.items)) {
+                    const extractedCodes = data.items.map(item => item.code || item).filter(Boolean);
+                    if (extractedCodes.length > 0) {
+                        materialCodesPerPart[part] = extractedCodes;
+                        currentColorIndex[part] = 0;
+                        log(`✓ Codes chargés pour ${part} depuis ${modelName}/${part}/index.json (format items): ${extractedCodes.join(', ')}`);
+                        continue;
+                    }
+                }
             }
         } catch (e) {
-            // Pas d'index.json, on continue avec la détection par essai
+            // Pas d'index.json ou erreur de lecture, continuer avec le scan manuel
         }
         
-        // Fallback: essayer des codes communs (à personnaliser selon vos besoins)
-        const commonPrefixes = ['W', 'M', 'F', 'L', 'P', 'C', 'G', 'T', 'S', 'V','X'];
+        // Fallback: scan manuel si pas d'index.json ou format invalide
+        log(`→ Index.json non trouvé ou invalide pour ${part}, scan manuel...`);
+        
+        // Tester des codes communs (à personnaliser selon vos besoins)
+        const commonPrefixes = []; //['W', 'M', 'F', 'L', 'P', 'C', 'G', 'T', 'S', 'V','X']
         const foundCodes = [];
         
         for (const prefix of commonPrefixes) {
             for (let i = 1; i <= 999; i++) {
                 const code = `${prefix}${String(i).padStart(3, '0')}`;
-                const testPath = `${basePath}Color_${code}_Albedo.png`;
+                const testPath = `${basePath}${textureFilePrefix}${code}_Albedo.png`;
                 
                 // Test si le fichier existe (HEAD request pour éviter de télécharger)
                 try {
@@ -380,7 +398,6 @@ async function scanMaterialCodes() {
     
     log('Scan des textures terminé');
 }
-
 // Fonction pour scanner le dossier environement et détecter les fichiers disponibles
 async function scanEnvironmentMaps() {
     log('Scan des environment maps...');
@@ -853,7 +870,7 @@ async function loadTextures(part, colorIndex) {
 
     const rawMaterialCode = (materialCodesPerPart[part] && materialCodesPerPart[part][colorIndex]) ? materialCodesPerPart[part][colorIndex] : (materialCodesPerPart[part] && materialCodesPerPart[part][0]) ? materialCodesPerPart[part][0] : null;
     const materialCode = normalizeMaterialCode(rawMaterialCode || '');
-    const basePath = `Textures/${modelName}/${part}/Color_${materialCode}_`;
+    const basePath = `Textures/${modelName}/${part}/${textureFilePrefix}${materialCode}_`;
 
     // Fonction helper pour essayer de charger une texture avec plusieurs extensions
     function loadTextureWithFallback(name, extensions = ['png', 'jpg'], flipY = true) {
@@ -905,7 +922,7 @@ async function loadTextures(part, colorIndex) {
                         }
 
                         t.needsUpdate = true;
-                        textureLog(`✓ Texture chargée (via fetch->img): Color_${materialCode}_${name}.${ext} (flipY: ${t.flipY}, colorSpace: ${t.colorSpace})`);
+                        textureLog(`✓ Texture chargée (via fetch->img): ${textureFilePrefix}${materialCode}_${name}.${ext} (flipY: ${t.flipY}, colorSpace: ${t.colorSpace})`);
                         resolve(t);
                         return;
                     } catch (e) {
@@ -922,7 +939,7 @@ async function loadTextures(part, colorIndex) {
                             } else {
                                 loadedTexture.colorSpace = THREE.LinearSRGBColorSpace;
                             }
-                            textureLog(`✓ Texture chargée (fallback): Color_${materialCode}_${name}.${ext} (flipY: ${flipY}, colorSpace: ${loadedTexture.colorSpace})`);
+                            textureLog(`✓ Texture chargée (fallback): ${textureFilePrefix}${materialCode}_${name}.${ext} (flipY: ${flipY}, colorSpace: ${loadedTexture.colorSpace})`);
                             resolve(loadedTexture);
                         },
                         undefined,
@@ -1141,7 +1158,7 @@ async function loadOtherTextureFoldersAndApply() {
 function normalizeMaterialCode(code) {
     if (!code) return code;
     const s = String(code);
-    return s.replace(/^Color_/i, '');
+    return s.replace(new RegExp(`^${textureFilePrefix}`, 'i'), '');
 }
 
 // In-memory cache to avoid repeated network checks for swatches
@@ -1215,13 +1232,13 @@ async function findSwatchForMaterial(folderPath, materialCode) {
 
     for (const suffix of suffixes) {
         for (const ext of preferredExts) {
-            const p = `${folder}Color_${code}${suffix}.${ext}`;
+            const p = `${folder}${textureFilePrefix}${code}${suffix}.${ext}`;
             if (await checkImageExists(p)) {
                 _swatchLookupCache.set(cacheKey, p);
                 return p;
             }
         }
-        // essayer aussi sans le préfixe `Color_` (certaines intégrations stockent juste `<code>_thumb.jpg`)
+        // essayer aussi sans le préfixe `textureFilePrefix` (certaines intégrations stockent juste `<code>_thumb.jpg`)
         for (const ext of preferredExts) {
             const p2 = `${folder}${code}${suffix}.${ext}`;
             if (await checkImageExists(p2)) {

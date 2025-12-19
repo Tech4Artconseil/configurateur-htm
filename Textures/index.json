@@ -1,0 +1,20 @@
+{
+  "_comment": "CONFIGURATEUR - Index auto-généré",
+  "_help": {
+    "role": "Index auto-généré - à adapter manuellement si besoin"
+  },
+  "items": [
+    {
+      "folder": "environement",
+      "displayName": "environement"
+    },
+    {
+      "folder": "fauteuil",
+      "displayName": "fauteuil"
+    },
+    {
+      "folder": "shineo",
+      "displayName": "shineo"
+    }
+  ]
+}
