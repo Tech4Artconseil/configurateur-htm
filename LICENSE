@@ -1,0 +1,86 @@
+BUSINESS SOURCE LICENSE 1.1
+
+Copyright (c) 2026 Tech4Art Conseil
+
+This license governs use of the accompanying software (the "Licensed Work").
+By using, copying, or modifying the Licensed Work you agree to be bound by
+the terms of this Business Source License 1.1 ("BSL 1.1").
+
+Definitions
+-----------
+1. "Change Date" means 2031-02-03.
+2. "Change License" means the Apache License, Version 2.0.
+3. "You" means any person or entity exercising rights under this License.
+
+Grant of Copyright License
+--------------------------
+Subject to the terms and conditions of this License, the copyright holder
+hereby grants You a non-exclusive, non-transferable right to use, copy,
+modify and distribute the Licensed Work solely for internal business purposes
+and in accordance with the restrictions set forth below, until the Change
+Date.
+
+Use After Change Date
+---------------------
+On or after the Change Date, the Licensed Work will be made available under
+the terms of the Change License. From and after the Change Date, You may
+exercise the rights granted under the Change License instead of the rights
+granted under this BSL 1.1.
+
+Restrictions
+------------
+Except as expressly permitted in this License, You may not:
+- Use the Licensed Work to provide a commercial hosted software service
+  ("Managed Service") to third parties if such use would compete with the
+  copyright holder's provision of the software as a service, unless You have
+  obtained a separate commercial license from the copyright holder.
+- Sublicense, sell, rent, lease or otherwise transfer rights in the
+  Licensed Work except as expressly permitted by this License.
+
+Additional Terms
+----------------
+1. Attribution: You must retain the copyright notice and this License
+   notice in all copies of the Licensed Work, in whole or in part.
+2. Patent Rights: No patent license is granted by implication or estoppel;
+   patent rights, if any, are reserved by the copyright holder unless
+   explicitly granted in writing.
+
+Termination
+-----------
+This License and the rights granted hereunder will terminate automatically
+if You fail to comply with any term of this License and do not cure such
+failure within thirty (30) days of becoming aware of it.
+
+Disclaimer of Warranty
+----------------------
+THE LICENSED WORK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN THE
+LICENSED WORK.
+
+How to Apply This License
+-------------------------
+Attach the following notice to the Licensed Work and each substantial file
+in the project (source and binary distributions) so that recipients are
+aware of the terms, the Change Date, and the Change License.
+
+    Copyright (c) 2026 Tech4Art Conseil
+
+    Licensed under the Business Source License 1.1.
+    Change Date: 2031-02-03
+    Change License: Apache-2.0
+
+Full Text and Notices
+---------------------
+The authoritative text of the Business Source License 1.1 and explanatory
+materials are available from the copyright holder. This file provides a
+short, human-readable statement of the licensing terms and the Change
+Date. For legal purposes, consult the full license text as supplied by
+the copyright holder or their official distribution.
+
+Contact
+-------
+Tech4Art Conseil

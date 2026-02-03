@@ -1,0 +1,30 @@
+Business Source License 1.1 (BSL-1.1) — références officielles
+
+Ce fichier fournit des références et un emplacement pour le texte officiel
+de la Business Source License 1.1.
+
+Références officielles :
+- MariaDB (BSL-1.1) : https://mariadb.com/bsl-1-1/
+- Redis / Redis Labs : https://redis.io/docs/ (voir section licences)
+
+Le fichier `LICENSE` à la racine contient un résumé clair des termes
+applicables à ce projet (Change Date, Change License, copyright).
+
+Si vous souhaitez une copie intégrale et authentifiée du texte légal
+de la BSL-1.1 incluse localement, dites-le moi et je l'ajouterai
+integralement dans ce fichier (ou je l'insérerai dans `LICENSE` si
+préféré).
+
+Contact pour questions relatives à la licence : tech4artconseil@gmail.com
+
+Third-party components
+----------------------
+- This product includes Three.js, which is distributed under the MIT License.
+	See: https://github.com/mrdoob/three.js/blob/dev/LICENSE
+
+Asset rights
+------------
+All 3D models, textures, images, and visual assets used in this project are © Jean-Baptiste Baron.
+All rights reserved.
+Commercial use, redistribution, or resale of these assets is prohibited without prior written permission.
+

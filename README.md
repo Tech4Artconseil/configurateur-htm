@@ -663,16 +663,32 @@ Ce projet est la propriété de Tech4Art Conseil (Jean-Baptiste BARON).
 - Société : Tech4Art Conseil
 - SIRET : 48017112300064
 
-Licence : ce code est distribué sous une licence propriétaire restrictive ("All rights reserved").
-L'utilisation, la copie, la modification, la distribution ou la publication du code
-ne sont pas autorisées sans l'accord écrit explicite du titulaire des droits.
+Licence : ce code est distribué sous la Business Source License 1.1 (BSL-1.1).
+La copie complète des termes est dans le fichier `LICENSE` à la racine.
 
-Voir le fichier `LICENSE_PROPRIETARY.txt` pour le texte complet de la licence,
-les mentions légales : https://tech4art.fr/mentions-legales/
-et la page Propriété Intellectuelle : https://tech4art.fr/propriete-intellectuelle-tech4artconseil-fr/
+- Change Date : 2031-02-03
+- Change License (après la Change Date) : Apache-2.0
+
+La BSL-1.1 autorise l'utilisation et la distribution selon des conditions
+spécifiques jusqu'à la Change Date ; après cette date, le projet sera
+redistribué sous la licence indiquée ci-dessus.
+
+Une version plus détaillée / texte complet et références officielles est
+disponible dans `LICENSE.full.txt` (référence vers le texte officiel).
 
 Pour toute demande commerciale, d'intégration, d'achat de licence ou de réutilisation,
 contactez : tech4artconseil@gmail.com
 
 Référence / guide pour la formulation de licences :
 https://doc-publique.pages.xlim.fr/une%20licence%20sur%20mon%20code/
+
+Notes supplémentaires
+---------------------
+- The development may involve the use of AI-assisted tools. The provider guarantees full ownership, responsibility, and compliance of the delivered code.
+- This product uses Three.js (MIT License).
+
+Asset rights
+------------
+All 3D models, textures, images, and visual assets are © Jean-Baptiste Baron.
+All rights reserved.
+Commercial use, redistribution, or resale is prohibited without prior written permission.

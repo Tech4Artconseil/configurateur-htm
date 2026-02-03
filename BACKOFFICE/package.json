@@ -4,6 +4,12 @@
   "description": "POC: génère index.json depuis l'arborescence Textures",
   "main": "scripts/generate-index.js",
   "type": "module",
+  "license": "BSL-1.1",
+  "businessSourceLicense": {
+    "version": "1.1",
+    "changeDate": "2031-02-03",
+    "changeLicense": "Apache-2.0"
+  },
   "scripts": {
     "poc": "node scripts/generate-index.js --root Textures/2 --write",
     "poc2": "node scripts/generate-index.js --root Textures/shineo ",
